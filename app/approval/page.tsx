@@ -5,6 +5,7 @@ import { IconPlus, IconCaretDown } from "@arco-design/web-react/icon";
 import React, { useState } from "react";
 import dayjs from "dayjs";
 import CollapsibleFilter from "./components/CollapsibleFilter";
+import { useRouter } from "next/navigation";
 
 const FormItem = Form.Item;
 const { Row, Col } = Grid;
@@ -12,7 +13,7 @@ const { RangePicker } = DatePicker;
 
 export default function ApprovalPage() {
     const [form] = Form.useForm();
-    
+    const router = useRouter();    
     // 身份列表
     const roles = [
         { label: "申请人", value: "applicant" },
@@ -136,16 +137,19 @@ export default function ApprovalPage() {
 
     // 新建审批
     const handleCreate = () => {
+        router.push('/approval/detail/add');
         console.log("新建审批");
     };
     
     // 查看审批
     const handleView = (record: any) => {
+        router.push(`/approval/detail/details?id=${record.id}`);
         console.log("查看审批:", record);
     };
     
     // 修改审批
     const handleEdit = (record: any) => {
+        router.push(`/approval/detail/edit?id=${record.id}`);
         console.log("修改审批:", record);
     };
     // 身份切换处理
