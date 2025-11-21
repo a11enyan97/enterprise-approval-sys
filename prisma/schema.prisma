@@ -1,0 +1,285 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// 1. 部门表
+model Department {
+  /// 部门ID，主键
+  id          Int      @id @default(autoincrement())
+  /// 部门编码，唯一标识
+  deptCode    String   @unique @map("dept_code")
+  /// 部门名称
+  deptName    String   @map("dept_name")
+  /// 父部门ID，用于构建部门树
+  parentId    Int?     @map("parent_id")
+  /// 部门层级，1为一级部门
+  level       Int      @default(1)
+  /// 部门完整路径，如：A部门/B子部门/C团队
+  fullPath    String?  @map("full_path")
+  /// 排序顺序
+  sortOrder   Int      @default(0) @map("sort_order")
+  /// 部门负责人ID
+  managerId   Int?     @map("manager_id")
+  /// 部门描述
+  description String?
+  /// 状态：1-启用，0-禁用
+  status      Int      @default(1)
+  /// 创建时间
+  createdAt   DateTime @default(now()) @map("created_at")
+  /// 更新时间
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 自引用关系
+  parent   Department?  @relation("DepartmentChildren", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentChildren")
+
+  // 负责人关系
+  manager User? @relation("DepartmentManager", fields: [managerId], references: [id])
+
+  // 反向关系
+  primaryDeptUsers User[]            @relation("UserPrimaryDept")
+  level1Approvals  ApprovalRequest[] @relation("Level1Department")
+  level2Approvals  ApprovalRequest[] @relation("Level2Department")
+  level3Approvals  ApprovalRequest[] @relation("Level3Department")
+  userDepartments  UserDepartment[]
+
+  @@map("departments")
+}
+
+// 2. 用户表
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  passwordHash  String   @map("password_hash")
+  role          UserRole
+  realName      String   @map("real_name")
+  email         String?  @map("email")
+  phone         String?  @map("phone")
+  employeeNo    String?  @map("employee_no")
+  position      String?  @map("position")
+  primaryDeptId Int?     @map("primary_dept_id")
+  status        Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // 主部门关系
+  primaryDept Department? @relation("UserPrimaryDept", fields: [primaryDeptId], references: [id])
+
+  // 反向关系
+  approvals            ApprovalRequest[]
+  approvalNodes        ApprovalNode[]
+  approvalAttachments  ApprovalAttachment[]
+  managedDepartments   Department[]      @relation("DepartmentManager")
+  createdApprovalTypes ApprovalType[]
+  userDepartments      UserDepartment[]
+
+  @@map("users")
+}
+
+// 3. 用户部门关联表
+model UserDepartment {
+  id        BigInt   @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  deptId    Int      @map("dept_id")
+  isPrimary Int      @default(1) @map("is_primary")
+  position  String?  @map("position")
+  jobTitle  String?  @map("job_title")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id])
+  department Department @relation(fields: [deptId], references: [id])
+
+  // 复合唯一键
+  @@unique([userId, deptId], name: "uk_user_dept")
+  @@map("user_departments")
+}
+
+// 4. 审批流程类型表
+model ApprovalType {
+  id          Int     @id @default(autoincrement())
+  typeName    String  @map("type_name")
+  description String? @map("description")
+  formSchema  Json    @map("form_schema")
+  approvers   String? // 存储JSON数组字符串
+
+  status    Int      @default(1) @map("status")
+  createdBy Int?     @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 反向关系
+  approvalRequests ApprovalRequest[]
+
+  creator User? @relation(fields: [createdBy], references: [id])
+
+  @@map("approval_types")
+}
+
+/// 5. 审批申请表（核心表）
+model ApprovalRequest {
+  /// 审批申请ID，主键
+  id BigInt @id @default(autoincrement())
+  /// 审批单号，唯一标识
+  requestNo String @unique @map("request_no")
+
+  // 核心业务字段
+  /// 审批项目名称
+  projectName String @map("project_name")
+  /// 审批内容，限制300字
+  approvalContent String? @map("approval_content") @db.Text
+
+  // 部门信息（三级级联）
+  /// 部门完整路径，如：A部门/B子部门/C团队
+  deptFullPath String? @map("dept_full_path")
+  /// 一级部门ID
+  deptLevel1Id Int? @map("dept_level1_id")
+  /// 二级部门ID
+  deptLevel2Id Int? @map("dept_level2_id")
+  /// 三级部门ID
+  deptLevel3Id Int? @map("dept_level3_id")
+
+  // 时间相关字段
+  /// 执行日期
+  executeDate DateTime @map("execute_date")
+  /// 创建时间
+  createdAt DateTime @default(now()) @map("created_at")
+  /// 提交时间
+  submittedAt DateTime? @map("submitted_at")
+  /// 完成时间
+  completedAt DateTime? @map("completed_at")
+
+  // 状态字段
+  /// 当前审批状态
+  currentStatus ApprovalStatus @default(draft) @map("current_status")
+
+  // 关联字段
+  /// 申请人ID
+  applicantId Int @map("applicant_id")
+  /// 审批类型ID
+  typeId Int @map("type_id")
+
+  /// 更新时间
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关系定义
+  applicant User @relation(fields: [applicantId], references: [id])
+  type      ApprovalType @relation(fields: [typeId], references: [id])
+
+  level1Dept Department? @relation("Level1Department", fields: [deptLevel1Id], references: [id])
+  level2Dept Department? @relation("Level2Department", fields: [deptLevel2Id], references: [id])
+  level3Dept Department? @relation("Level3Department", fields: [deptLevel3Id], references: [id])
+
+  // 反向关系
+  approvalNodes ApprovalNode[]
+  attachments   ApprovalAttachment[]
+
+  @@map("approval_requests")
+}
+
+/// 6. 审批节点表
+model ApprovalNode {
+  /// 审批节点ID，主键
+  id         BigInt     @id @default(autoincrement())
+  /// 审批申请ID
+  requestId  BigInt     @map("request_id")
+  /// 节点类型
+  nodeType   NodeType   @map("node_type")
+  /// 审批步骤序号
+  stepNumber Int        @map("step_number")
+  /// 审批人ID
+  approverId Int        @map("approver_id")
+  /// 节点状态
+  nodeStatus NodeStatus @map("node_status")
+  /// 审批意见
+  comment    String?    @map("comment") @db.Text
+  /// 操作时间
+  actionTime DateTime?  @map("action_time")
+  /// 创建时间
+  createdAt  DateTime   @default(now()) @map("created_at")
+  /// 更新时间
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // 关系定义
+  request  ApprovalRequest @relation(fields: [requestId], references: [id])
+  approver User            @relation(fields: [approverId], references: [id])
+
+  // 复合唯一键
+  @@unique([requestId, stepNumber], name: "uk_request_step")
+  @@map("approval_nodes")
+}
+
+/// 7. 审批附件表
+model ApprovalAttachment {
+  /// 附件ID，主键
+  id BigInt @id @default(autoincrement())
+  /// 审批申请ID
+  requestId BigInt @map("request_id")
+  /// 附件类型：image-图片附件，table-表格附件
+  attachmentType AttachmentType @map("attachment_type")
+  /// 文件原始名称
+  fileName String @map("file_name")
+  /// 文件存储路径
+  filePath String @map("file_path")
+  /// 文件大小（字节）
+  fileSize BigInt @map("file_size")
+  /// 文件MIME类型
+  mimeType String? @map("mime_type")
+  /// 上传人ID
+  uploaderId Int @map("uploader_id")
+  /// 创建时间
+  createdAt DateTime @default(now()) @map("created_at")
+  /// 更新时间
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关系定义
+  request  ApprovalRequest @relation(fields: [requestId], references: [id])
+  uploader User            @relation(fields: [uploaderId], references: [id])
+
+  @@map("approval_attachments")
+}
+
+// 枚举类型定义
+enum UserRole {
+  applicant
+  approver
+}
+
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+}
+
+enum NodeType {
+  start
+  normal
+  end
+}
+
+enum NodeStatus {
+  waiting
+  processing
+  approved
+  rejected
+}
+
+/// 附件类型枚举
+enum AttachmentType {
+  /// 图片附件
+  image
+  /// 表格附件
+  table
+}
