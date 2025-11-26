@@ -64,10 +64,6 @@ model User {
   passwordHash  String   @map("password_hash")
   role          UserRole
   realName      String   @map("real_name")
-  email         String?  @map("email")
-  phone         String?  @map("phone")
-  employeeNo    String?  @map("employee_no")
-  position      String?  @map("position")
   primaryDeptId Int?     @map("primary_dept_id")
   status        Int      @default(1)
   createdAt     DateTime @default(now()) @map("created_at")
@@ -77,12 +73,10 @@ model User {
   primaryDept Department? @relation("UserPrimaryDept", fields: [primaryDeptId], references: [id])
 
   // 反向关系
-  approvals            ApprovalRequest[]
-  approvalNodes        ApprovalNode[]
-  approvalAttachments  ApprovalAttachment[]
-  managedDepartments   Department[]      @relation("DepartmentManager")
-  createdApprovalTypes ApprovalType[]
-  userDepartments      UserDepartment[]
+  approvals           ApprovalRequest[]
+  approvalAttachments ApprovalAttachment[]
+  managedDepartments  Department[]         @relation("DepartmentManager")
+  userDepartments     UserDepartment[]
 
   @@map("users")
 }
@@ -106,37 +100,16 @@ model UserDepartment {
   @@map("user_departments")
 }
 
-// 4. 审批流程类型表
-model ApprovalType {
-  id          Int     @id @default(autoincrement())
-  typeName    String  @map("type_name")
-  description String? @map("description")
-  formSchema  Json    @map("form_schema")
-  approvers   String? // 存储JSON数组字符串
-
-  status    Int      @default(1) @map("status")
-  createdBy Int?     @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // 反向关系
-  approvalRequests ApprovalRequest[]
-
-  creator User? @relation(fields: [createdBy], references: [id])
-
-  @@map("approval_types")
-}
-
-/// 5. 审批申请表（核心表）
+/// 4. 审批申请表（核心表）
 model ApprovalRequest {
   /// 审批申请ID，主键
-  id BigInt @id @default(autoincrement())
+  id        BigInt @id @default(autoincrement())
   /// 审批单号，唯一标识
   requestNo String @unique @map("request_no")
 
   // 核心业务字段
   /// 审批项目名称
-  projectName String @map("project_name")
+  projectName     String  @map("project_name")
   /// 审批内容，限制300字
   approvalContent String? @map("approval_content") @db.Text
 
@@ -144,17 +117,17 @@ model ApprovalRequest {
   /// 部门完整路径，如：A部门/B子部门/C团队
   deptFullPath String? @map("dept_full_path")
   /// 一级部门ID
-  deptLevel1Id Int? @map("dept_level1_id")
+  deptLevel1Id Int?    @map("dept_level1_id")
   /// 二级部门ID
-  deptLevel2Id Int? @map("dept_level2_id")
+  deptLevel2Id Int?    @map("dept_level2_id")
   /// 三级部门ID
-  deptLevel3Id Int? @map("dept_level3_id")
+  deptLevel3Id Int?    @map("dept_level3_id")
 
   // 时间相关字段
   /// 执行日期
-  executeDate DateTime @map("execute_date")
+  executeDate DateTime  @map("execute_date")
   /// 创建时间
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
   /// 提交时间
   submittedAt DateTime? @map("submitted_at")
   /// 完成时间
@@ -167,81 +140,45 @@ model ApprovalRequest {
   // 关联字段
   /// 申请人ID
   applicantId Int @map("applicant_id")
-  /// 审批类型ID
-  typeId Int @map("type_id")
 
   /// 更新时间
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // 关系定义
   applicant User @relation(fields: [applicantId], references: [id])
-  type      ApprovalType @relation(fields: [typeId], references: [id])
 
   level1Dept Department? @relation("Level1Department", fields: [deptLevel1Id], references: [id])
   level2Dept Department? @relation("Level2Department", fields: [deptLevel2Id], references: [id])
   level3Dept Department? @relation("Level3Department", fields: [deptLevel3Id], references: [id])
 
   // 反向关系
-  approvalNodes ApprovalNode[]
-  attachments   ApprovalAttachment[]
+  attachments ApprovalAttachment[]
 
   @@map("approval_requests")
 }
 
-/// 6. 审批节点表
-model ApprovalNode {
-  /// 审批节点ID，主键
-  id         BigInt     @id @default(autoincrement())
-  /// 审批申请ID
-  requestId  BigInt     @map("request_id")
-  /// 节点类型
-  nodeType   NodeType   @map("node_type")
-  /// 审批步骤序号
-  stepNumber Int        @map("step_number")
-  /// 审批人ID
-  approverId Int        @map("approver_id")
-  /// 节点状态
-  nodeStatus NodeStatus @map("node_status")
-  /// 审批意见
-  comment    String?    @map("comment") @db.Text
-  /// 操作时间
-  actionTime DateTime?  @map("action_time")
-  /// 创建时间
-  createdAt  DateTime   @default(now()) @map("created_at")
-  /// 更新时间
-  updatedAt  DateTime   @updatedAt @map("updated_at")
-
-  // 关系定义
-  request  ApprovalRequest @relation(fields: [requestId], references: [id])
-  approver User            @relation(fields: [approverId], references: [id])
-
-  // 复合唯一键
-  @@unique([requestId, stepNumber], name: "uk_request_step")
-  @@map("approval_nodes")
-}
-
-/// 7. 审批附件表
+/// 5. 审批附件表
 model ApprovalAttachment {
   /// 附件ID，主键
-  id BigInt @id @default(autoincrement())
+  id             BigInt         @id @default(autoincrement())
   /// 审批申请ID
-  requestId BigInt @map("request_id")
+  requestId      BigInt         @map("request_id")
   /// 附件类型：image-图片附件，table-表格附件
   attachmentType AttachmentType @map("attachment_type")
   /// 文件原始名称
-  fileName String @map("file_name")
+  fileName       String         @map("file_name")
   /// 文件存储路径
-  filePath String @map("file_path")
+  filePath       String         @map("file_path")
   /// 文件大小（字节）
-  fileSize BigInt @map("file_size")
+  fileSize       BigInt         @map("file_size")
   /// 文件MIME类型
-  mimeType String? @map("mime_type")
+  mimeType       String?        @map("mime_type")
   /// 上传人ID
-  uploaderId Int @map("uploader_id")
+  uploaderId     Int            @map("uploader_id")
   /// 创建时间
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
   /// 更新时间
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   // 关系定义
   request  ApprovalRequest @relation(fields: [requestId], references: [id])
@@ -250,28 +187,15 @@ model ApprovalAttachment {
   @@map("approval_attachments")
 }
 
-// 枚举类型定义
+// 用户角色枚举
 enum UserRole {
-  applicant
-  approver
+  applicant // 申请人
+  approver // 审批人
 }
 
 enum ApprovalStatus {
   draft
   pending
-  approved
-  rejected
-}
-
-enum NodeType {
-  start
-  normal
-  end
-}
-
-enum NodeStatus {
-  waiting
-  processing
   approved
   rejected
 }

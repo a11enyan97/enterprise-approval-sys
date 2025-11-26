@@ -1,0 +1,81 @@
+/**
+ * 审批申请相关类型定义
+ */
+
+/**
+ * 审批状态枚举
+ */
+export enum ApprovalStatus {
+  DRAFT = "draft",
+  PENDING = "pending",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+}
+
+/**
+ * 审批附件项
+ */
+export interface ApprovalAttachmentItem {
+  id: string;
+  requestId: string;
+  attachmentType: "image" | "table";
+  fileName: string;
+  filePath: string;
+  fileSize: string;
+  mimeType?: string | null;
+  uploaderId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 审批申请列表项
+ */
+export interface ApprovalRequestItem {
+  id: string;
+  requestNo: string;
+  projectName: string;
+  approvalContent?: string;
+  deptFullPath?: string;
+  deptLevel1Id?: number;
+  deptLevel2Id?: number;
+  deptLevel3Id?: number;
+  executeDate: string;
+  createdAt: string;
+  submittedAt?: string | null;
+  completedAt?: string | null;
+  currentStatus: ApprovalStatus;
+  applicantId: number;
+  updatedAt: string;
+  applicant: {
+    id: number;
+    realName: string;
+  };
+  attachments?: ApprovalAttachmentItem[];
+}
+
+/**
+ * 审批申请列表响应
+ */
+export interface ApprovalRequestListResponse {
+  data: ApprovalRequestItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+
+/**
+ * 获取审批列表的查询参数
+ */
+export interface GetApprovalListParams {
+  page?: number;
+  pageSize?: number;
+  applicantId?: number;
+  status?: ApprovalStatus | string;
+  deptLevel1Id?: number;
+  deptLevel2Id?: number;
+  deptLevel3Id?: number;
+}
+
