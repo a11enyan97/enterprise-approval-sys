@@ -5,10 +5,10 @@ import { IconArrowLeft } from "@arco-design/web-react/icon";
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getApprovalDetail, submitApprovalRequest } from "@/lib/api/approval";
+import { submitApprovalRequest } from "@/lib/api/approval";
 import { useDepartments } from "@/hooks/useDepartments";
+import { useApprovalDetail } from "@/hooks/useApprovalDetail";
 import { useUserStore } from "@/store/userStore";
-import type { ApprovalRequestItem } from "@/types/approval";
 
 const FormItem = Form.Item;
 const { Row, Col } = Grid;
@@ -19,8 +19,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
     const [form] = Form.useForm();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [loading, setLoading] = useState<boolean>(false);
-    const [detailData, setDetailData] = useState<ApprovalRequestItem | null>(null);
+    const [saving, setSaving] = useState<boolean>(false);
 
     const formItemLayout = {
         labelCol: {
@@ -36,15 +35,14 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
         params.then((p) => setPageType(p.pageType));
     }, [params]);
 
-    // 获取审批详情
-    useEffect(() => {
-        const id = searchParams.get("id");
-        const isDetailsOrEdit = pageType === "details" || pageType === "edit";
-
-        if (id && isDetailsOrEdit) {
-            fetchApprovalDetail(id);
-        }
-    }, [pageType, searchParams]);
+    // 获取审批详情 ID
+    const requestId = searchParams.get("id");
+    const isDetailsOrEdit = pageType === "details" || pageType === "edit";
+    
+    // 使用 Hook 获取审批详情
+    const { data: approvalDetail, loading, error, refetch } = useApprovalDetail(
+        isDetailsOrEdit ? requestId : null
+    );
 
     enum PageTypeEnum {
         add = '审核新增页',
@@ -88,15 +86,11 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
     // 判断是否为只读模式（详情页）
     const isReadOnly = pageType === 'details';
 
-    // 获取审批详情
-    const fetchApprovalDetail = async (id: string) => {
-        try {
-            setLoading(true);
-            const data = await getApprovalDetail(id);
-            setDetailData(data);
-
+    // 处理审批详情数据变化，设置表单值
+    useEffect(() => {
+        if (approvalDetail) {
             // 处理附件数据
-            const imageAttachments = data.attachments
+            const imageAttachments = approvalDetail.attachments
                 ?.filter(att => att.attachmentType === "image")
                 .map(att => ({
                     uid: att.id,
@@ -104,7 +98,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
                     name: att.fileName,
                 })) || [];
 
-            const tableAttachments = data.attachments
+            const tableAttachments = approvalDetail.attachments
                 ?.filter(att => att.attachmentType === "table")
                 .map(att => ({
                     uid: att.id,
@@ -112,31 +106,29 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
                     name: att.fileName,
                 })) || [];
 
-            // 填充表单数据
-            // TreeSelect 使用单个值（string类型），优先使用三级部门ID，如果没有则使用二级，再没有则使用一级
-            const deptId = data.deptLevel3Id || data.deptLevel2Id || data.deptLevel1Id;
-            const deptValue = deptId ? String(deptId) : undefined;
-
             // 设置表单值
             form.setFieldsValue({
-                projectName: data.projectName,
-                approvalContent: data.approvalContent,
-                executionDate: data.executeDate ? dayjs(data.executeDate) : undefined,
-                applicationDepartment: deptValue,
+                projectName: approvalDetail.projectName,
+                approvalContent: approvalDetail.approvalContent,
+                executionDate: approvalDetail.executeDate ? dayjs(approvalDetail.executeDate) : undefined,
+                applicationDepartment: approvalDetail.deptFullPath || undefined,
                 imageAttachments,
                 tableAttachments,
             });
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "获取审批详情失败";
+        }
+    }, [approvalDetail, form]);
+
+    // 处理错误情况
+    useEffect(() => {
+        if (error) {
+            const errorMessage = error.message || "获取审批详情失败";
             Message.error(errorMessage);
             // 获取失败时返回列表页
             setTimeout(() => {
                 router.push('/approval');
             }, 1500);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [error, router]);
 
     // 保存处理
     const handleSave = () => {
@@ -147,7 +139,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
 
         form.validate().then(async (values) => {
             try {
-                setLoading(true);
+                setSaving(true);
 
                 // 处理部门信息
                 let deptLevel1Id: number | undefined;
@@ -199,7 +191,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
                 const errorMessage = error instanceof Error ? error.message : "保存失败";
                 Message.error(errorMessage);
             } finally {
-                setLoading(false);
+                setSaving(false);
             }
         }).catch((error) => {
             console.error("表单验证失败:", error);
@@ -258,7 +250,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
 
             {/* 表单内容 */}
             <div className="bg-white rounded-md p-6">
-                <Spin loading={loading} style={{ width: '100%' }}>
+                <Spin loading={loading || saving} style={{ width: '100%' }}>
                     <Form
                         form={form}
                         layout="horizontal"

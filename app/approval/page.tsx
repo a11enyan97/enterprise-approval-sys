@@ -1,10 +1,11 @@
 "use client";
 
-import { Form, Input, Select, TreeSelect, DatePicker, Button, Grid, Table, Avatar, Dropdown, Menu, Message, Spin, Modal } from "@arco-design/web-react";
+import { Form, Input, Select, TreeSelect, DatePicker, Button, Grid, Table, Avatar, Dropdown, Menu, Message, Spin } from "@arco-design/web-react";
 import type { TableColumnProps } from "@arco-design/web-react";
 import { IconPlus, IconCaretDown } from "@arco-design/web-react/icon";
 import { useState, useEffect } from "react";
 import CollapsibleFilter from "./components/CollapsibleFilter";
+import ConfirmModal from "./components/ConfirmModal";
 import { useRouter } from "next/navigation";
 import { useApprovalList } from "@/hooks/useApprovalList";
 import { useDepartments } from "@/hooks/useDepartments";
@@ -619,59 +620,47 @@ export default function ApprovalPage() {
             </div>
             
             {/* 确认提交弹窗 */}
-            <Modal
+            <ConfirmModal
+                type="submit"
                 title="确认提交"
                 visible={confirmVisible}
-                onOk={handleConfirmSubmit}
-                onCancel={handleCancelSubmit}
+                projectName={pendingRecord?.projectName || ""}
                 okText="确认提交"
                 cancelText="取消"
+                okButtonStatus="default"
                 confirmLoading={pendingRecord ? submittingIds.has(pendingRecord.id) : false}
-            >
-                {pendingRecord && (
-                    <div>
-                        确定要提交审批申请"<strong>{pendingRecord.projectName}</strong>"吗？提交后将进入审批流程，无法再修改。
-                    </div>
-                )}
-            </Modal>
+                onOk={handleConfirmSubmit}
+                onCancel={handleCancelSubmit}
+            />
             
             {/* 删除确认弹窗 */}
-            <Modal
+            <ConfirmModal
+                type="delete"
                 title="确认删除"
                 visible={deleteConfirmVisible}
-                onOk={handleConfirmDelete}
-                onCancel={handleCancelDelete}
+                projectName={deleteRecord?.projectName || ""}
                 okText="确认删除"
                 cancelText="取消"
-                okButtonProps={{ status: "danger" }}
+                okButtonStatus="danger"
                 confirmLoading={deleteRecord ? deletingIds.has(deleteRecord.id) : false}
-            >
-                {deleteRecord && (
-                    <div>
-                        确定要删除审批申请"<strong>{deleteRecord.projectName}</strong>"吗？删除后将无法恢复。
-                    </div>
-                )}
-            </Modal>
+                onOk={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+            />
             
             {/* 审批确认弹窗 */}
-            <Modal
+            <ConfirmModal
+                type="approve"
                 title={approvalAction === "approve" ? "确认同意" : "确认拒绝"}
                 visible={approvalModalVisible}
-                onOk={handleConfirmApproval}
-                onCancel={handleCancelApproval}
+                projectName={approvalRecord?.projectName || ""}
                 okText={approvalAction === "approve" ? "确认同意" : "确认拒绝"}
                 cancelText="取消"
-                okButtonProps={{
-                    status: approvalAction === "approve" ? "success" : "danger",
-                }}
+                okButtonStatus={approvalAction === "approve" ? "success" : "danger"}
                 confirmLoading={approvalRecord ? approvingIds.has(approvalRecord.id) : false}
-            >
-                {approvalRecord && (
-                    <div>
-                        确定要{approvalAction === "approve" ? "同意" : "拒绝"}审批申请"<strong>{approvalRecord.projectName}</strong>"吗？
-                    </div>
-                )}
-            </Modal>
+                approvalAction={approvalAction || undefined}
+                onOk={handleConfirmApproval}
+                onCancel={handleCancelApproval}
+            />
         </div>
     );
 }

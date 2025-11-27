@@ -27,17 +27,11 @@ body {
 }
 
 /* 调整 Arco Form 必填星号位置与间距 */
-.arco-form-item-label,
-.arco-form-item-label-col .arco-form-item-label {
-  position: relative !important;
-  padding-left: 14px !important; /* 预留星号空间 */
-  display: inline-block;
+.arco-form-label-item > label {
+  display: flex !important;
+  justify-content: flex-start !important;
 }
 
-.arco-form-item-label .arco-form-item-label-required-symbol {
-  position: absolute !important;
-  left: 2px;
-  top: -6px;
-  line-height: 1;
-  font-size: 12px;
+.arco-form-label-item .arco-form-item-symbol {
+  margin-right: 4px !important;
 }
