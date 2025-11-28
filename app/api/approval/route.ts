@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import {
   createApprovalRequest,
   getApprovalRequestList,
-} from "./service";
-import { handleApiError } from "../_shared/errors";
+} from "@/services/approval.service";
+import { handleApiError } from "@/services/_shared/errors";
 
 /**
  * 创建审批申请
@@ -21,7 +21,8 @@ export async function POST(request: Request) {
       data: approval,
     });
   } catch (error) {
-    return handleApiError(error, "创建审批申请失败");
+    const errorResponse = handleApiError(error, "创建审批申请失败");
+    return NextResponse.json(errorResponse, { status: errorResponse.code === "FOREIGN_KEY_CONSTRAINT" || errorResponse.code === "UNIQUE_CONSTRAINT" ? 400 : 500 });
   }
 }
 
@@ -64,7 +65,8 @@ export async function GET(request: Request) {
       data: result,
     });
   } catch (error) {
-    return handleApiError(error, "获取审批申请列表失败");
+    const errorResponse = handleApiError(error, "获取审批申请列表失败");
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 

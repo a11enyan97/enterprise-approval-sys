@@ -3,8 +3,8 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { getDepartmentCascaderOptions } from "@/lib/api/departments";
-import type { CascaderOption } from "@/lib/api/departments";
+import { getDepartmentCascaderOptions } from "@/utils/api/departments";
+import type { CascaderOption } from "@/utils/api/departments";
 
 interface UseDepartmentsReturn {
   options: CascaderOption[];

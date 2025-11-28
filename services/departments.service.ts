@@ -1,5 +1,5 @@
-import { prisma } from "@/prisma/client";
-import { serialize } from "../_shared/utils";
+import { prisma } from "@/data/db";
+import { serialize } from "./_shared/utils";
 
 /**
  * 树形选择器选项类型

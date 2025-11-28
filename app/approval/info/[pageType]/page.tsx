@@ -5,7 +5,7 @@ import { IconArrowLeft } from "@arco-design/web-react/icon";
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { submitApprovalRequest } from "@/lib/api/approval";
+import { submitApprovalRequest } from "@/utils/api/approval";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useApprovalDetail } from "@/hooks/useApprovalDetail";
 import { useUserStore } from "@/store/userStore";
@@ -198,6 +198,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
         });
     };
 
+    // 判断文件是否符合上传要求
     const isAcceptFile = (file: File, accept: string) => {
         if (accept && file) {
             const accepts = Array.isArray(accept)
@@ -232,6 +233,55 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
         return !!file;
     }
 
+    // 自定义上传函数：使用 OSS 预签名 URL
+    const customRequest = async (option: any) => {
+        const { onProgress, onError, onSuccess, file } = option;
+
+        try {
+            // 1. 获取预签名 URL（传递文件名和文件类型）
+            const response = await fetch('/api/oss/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    filename: file.name,
+                    contentType: file.type || 'application/octet-stream'
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || errorData.details || '获取上传地址失败');
+            }
+
+            const { uploadUrl, publicUrl, filename: uniqueFileName } = await response.json();
+
+            // 2. 使用预签名 URL 上传文件到 OSS
+            // 注意：Content-Type 必须与预签名 URL 生成时使用的一致
+            const uploadContentType = file.type || 'application/octet-stream';
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': uploadContentType,
+                },
+            });
+
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                throw new Error(`文件上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
+            }
+
+            onSuccess({
+                url: publicUrl,
+                name: file.name,
+            });
+        } catch (error: any) {
+            Message.error(error?.message || '上传失败，请重试');
+            onError(error);
+        }
+    };
 
     return (
         <div className="p-6 bg-zinc-50 min-h-screen">
@@ -326,7 +376,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
                                 multiple
                                 imagePreview
                                 limit={3}
-                                action='/'
+                                customRequest={customRequest}
                                 listType='picture-card'
                                 disabled={isReadOnly}
                             />
@@ -337,7 +387,7 @@ export default function ApprovalDetailPage({ params }: { params: Promise<{ pageT
                             triggerPropName="fileList"
                         >
                             <Upload
-                                action='/'
+                                customRequest={customRequest}
                                 accept='.xlsx,.xls'
                             />
                         </FormItem>

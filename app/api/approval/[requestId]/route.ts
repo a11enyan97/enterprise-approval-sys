@@ -4,8 +4,8 @@ import {
   submitApprovalRequest,
   approveOrRejectRequest,
   deleteApprovalRequest
-} from "../service";
-import { handleApiError } from "../../_shared/errors";
+} from "@/services/approval.service";
+import { handleApiError } from "@/services/_shared/errors";
 
 /**
  * 获取审批申请详情
@@ -35,7 +35,8 @@ export async function GET(
       data: approval,
     });
   } catch (error) {
-    return handleApiError(error, "获取审批申请详情失败");
+    const errorResponse = handleApiError(error, "获取审批申请详情失败");
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
@@ -57,7 +58,8 @@ export async function PUT(
       data: approval,
     });
   } catch (error) {
-    return handleApiError(error, "提交审批申请失败");
+    const errorResponse = handleApiError(error, "提交审批申请失败");
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
@@ -108,7 +110,8 @@ export async function PATCH(
       data: approval,
     });
   } catch (error) {
-    return handleApiError(error, "审批操作失败");
+    const errorResponse = handleApiError(error, "审批操作失败");
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
@@ -128,6 +131,7 @@ export async function DELETE(
       data: deleted,
     });
   } catch (error) {
-    return handleApiError(error, "删除审批申请失败");
+    const errorResponse = handleApiError(error, "删除审批申请失败");
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }

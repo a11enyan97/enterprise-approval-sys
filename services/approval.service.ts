@@ -1,10 +1,10 @@
-import { prisma } from "@/prisma/client";
+import { prisma } from "@/data/db";
 import {
   validateUserExists,
   validateDepartments,
   ValidationError,
-} from "../_shared/validators";
-import { serialize } from "../_shared/utils";
+} from "./_shared/validators";
+import { serialize } from "./_shared/utils";
 import { ApprovalStatus } from "@/types/approval";
 
 /**
@@ -210,7 +210,7 @@ export async function submitApprovalRequest(
 
   const updateData: any = {};
 
-  // 判断：如果传入 currentStatus，只更新状态字段；否则更新其他字段
+  // 提交审批和更新审批：如果传入 currentStatus，只更新状态字段；否则更新其他字段
   if (data?.currentStatus !== undefined) {
     // 只更新状态字段
     updateData.currentStatus = data.currentStatus;
@@ -233,7 +233,6 @@ export async function submitApprovalRequest(
       updateData.completedAt = new Date();
     }
   } else if (data) {
-    // 更新其他字段（不更新状态）
     // 验证记录状态是否为 draft（只有 draft 状态可以修改）
     if (existingApproval.currentStatus !== "draft") {
       throw new ValidationError(
@@ -423,3 +422,4 @@ export async function deleteApprovalRequest(requestId: bigint | string | number)
   // 5. 返回被删除的审批申请（序列化处理 BigInt）
   return serialize(existingApproval);
 }
+

@@ -4,12 +4,12 @@ import { Form, Input, Select, TreeSelect, DatePicker, Button, Grid, Table, Avata
 import type { TableColumnProps } from "@arco-design/web-react";
 import { IconPlus, IconCaretDown } from "@arco-design/web-react/icon";
 import { useState, useEffect } from "react";
-import CollapsibleFilter from "./components/CollapsibleFilter";
-import ConfirmModal from "./components/ConfirmModal";
+import CollapsibleFilter from "@/components/business/CollapsibleFilter";
+import ConfirmModal from "@/components/business/ConfirmModal";
 import { useRouter } from "next/navigation";
 import { useApprovalList } from "@/hooks/useApprovalList";
 import { useDepartments } from "@/hooks/useDepartments";
-import { submitApprovalRequest, approveOrRejectApprovalRequest, deleteApprovalRequest } from "@/lib/api/approval";
+import { submitApprovalRequest, approveOrRejectApprovalRequest, deleteApprovalRequest } from "@/utils/api/approval";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem, ApprovalStatus } from "@/types/approval";
 import dayjs from "dayjs";
@@ -229,7 +229,6 @@ export default function ApprovalPage() {
     // 查询处理
     const handleQuery = () => {
         form.validate().then((values) => {
-            console.log("查询参数:", values);
             // 构建查询参数
             const params: any = {};
             if (values.approvalStatus) {

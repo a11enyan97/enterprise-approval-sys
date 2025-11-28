@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { getApprovalDetail } from "@/lib/api/approval";
+import { getApprovalDetail } from "@/utils/api/approval";
 import type { ApprovalRequestItem } from "@/types/approval";
 
 interface UseApprovalDetailReturn {

@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { getApprovalList } from "@/lib/api/approval";
+import { getApprovalList } from "@/utils/api/approval";
 import type {
   ApprovalRequestListResponse,
   GetApprovalListParams,

@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+"use server";
+
 import {
   getAllDepartments,
   getDepartmentCascaderOptions,
@@ -6,37 +7,32 @@ import {
 import { handleApiError } from "@/services/_shared/errors";
 
 /**
- * 获取部门列表（级联格式）
- * GET /api/departments
- * 
- * 查询参数：
- * - format: 'cascader' | 'list' (默认: 'cascader')
- *   - cascader: 返回三级级联格式，用于级联选择器
- *   - list: 返回原始部门列表 
+ * 获取部门列表
+ * @param format 'cascader' | 'list' (默认: 'cascader')
  */
-export async function GET(request: Request) {
+export async function getDepartmentsAction(format: "cascader" | "list" = "cascader") {
   try {
-    const { searchParams } = new URL(request.url);
-    const format = searchParams.get("format") || "cascader";
-
     if (format === "cascader") {
       // 返回三级级联格式
       const options = await getDepartmentCascaderOptions();
-      return NextResponse.json({
+      return {
         success: true,
         data: options,
-      });
+      };
     } else {
       // 返回原始部门列表
       const departments = await getAllDepartments();
-      return NextResponse.json({
+      return {
         success: true,
         data: departments,
-      });
+      };
     }
   } catch (error) {
     const errorResponse = handleApiError(error, "获取部门列表失败");
-    return NextResponse.json(errorResponse, { status: 500 });
+    return {
+      success: false,
+      ...errorResponse,
+    };
   }
 }
 
