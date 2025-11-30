@@ -56,7 +56,7 @@ export async function generateOSSSignature(
     expires: 600,
   };
 
-  // MIME类型
+  // 判断MIME类型
   if (contentType) {
     signatureOptions['Content-Type'] = contentType;
   } else {

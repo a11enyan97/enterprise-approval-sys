@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AppLayoutClient from "@/components/common/layout-client";
 
 export const metadata: Metadata = {
   title: "企业审批系统",
@@ -13,10 +14,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className="antialiased"
-      >
-        {children}
+      <body className="antialiased">
+        <AppLayoutClient>{children}</AppLayoutClient>
       </body>
     </html>
   );

@@ -2,6 +2,7 @@
 
 import { generateOSSSignature } from "@/services/oss.service";
 import { handleApiError } from "@/services/_shared/errors";
+import type { OSSTokenResponse } from "@/types/oss";
 
 /**
  * 获取 OSS 签名
@@ -11,7 +12,7 @@ import { handleApiError } from "@/services/_shared/errors";
 export async function getOSSTokenAction(
   filename: string,
   contentType?: string
-) {
+): Promise<OSSTokenResponse> {
   try {
     const result = await generateOSSSignature(filename, contentType);
     return {

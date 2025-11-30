@@ -3,14 +3,15 @@
  */
 
 import { getOSSTokenAction } from "@/actions/oss.action";
+import type { OSSTokenResponse, OSSUploadResult } from "@/types/oss";
 
 /**
- * OSS 上传结果
+ * 类型守卫：检查是否为成功响应
  */
-export interface OSSUploadResult {
-  uploadUrl: string;
-  publicUrl: string;
-  filename: string;
+function isOSSTokenSuccess(
+  response: OSSTokenResponse
+): response is Extract<OSSTokenResponse, { success: true }> {
+  return response.success === true;
 }
 
 /**
@@ -22,7 +23,7 @@ export async function uploadToOSS(file: File): Promise<OSSUploadResult> {
   // 1. 获取 OSS 签名
   const tokenResult = await getOSSTokenAction(file.name, file.type);
 
-  if (!tokenResult.success) {
+  if (!isOSSTokenSuccess(tokenResult)) {
     throw new Error(tokenResult.error || "获取 OSS 签名失败");
   }
 

@@ -1,4 +1,4 @@
-import { prisma } from "@/data/db";
+import { prisma } from "@/prisma/db";
 import { serialize } from "./_shared/utils";
 
 /**

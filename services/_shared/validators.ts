@@ -1,4 +1,4 @@
-import { prisma } from "@/data/db";
+import { prisma } from "@/prisma/db";
 
 /**
  * 数据库验证错误类
