@@ -1,5 +1,5 @@
 import { getApprovalRequestList } from "@/services/approval.service";
-import ApprovalTableClient from "./approval-table-client";
+import ApprovalTableClient from "@/components/business/approval/approval-table-client";
 
 interface ApprovalPageProps {
   searchParams: Promise<{

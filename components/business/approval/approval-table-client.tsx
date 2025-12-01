@@ -10,7 +10,7 @@ import ConfirmModal from "@/components/business/ConfirmModal";
 import { submitApprovalAction, approveOrRejectAction, deleteApprovalAction } from "@/actions/approval.action";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem, ApprovalRequestListResponse } from "@/types/approval";
-import { getApprovalTableColumns } from "@/components/business/approval";
+import { getApprovalTableColumns } from "@/components/business/approvalConfig";
 
 interface ApprovalTableClientProps {
   initialData: ApprovalRequestListResponse;

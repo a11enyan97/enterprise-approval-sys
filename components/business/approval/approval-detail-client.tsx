@@ -53,26 +53,6 @@ export default function ApprovalDetailClient({
   // 判断是否为只读模式（详情页）
   const isReadOnly = pageType === 'details';
 
-  // 根据部门ID查找部门路径（用于确定部门层级和完整路径）
-  const findDeptPath = (deptId: string | number, options: CascaderOption[], path: CascaderOption[] = []): CascaderOption[] | null => {
-    for (const option of options) {
-      const optionKey = typeof option.key === 'string' ? parseInt(option.key) : (option.key as number);
-      const compareValue = typeof deptId === 'string' ? parseInt(deptId) : deptId;
-      const currentPath = [...path, option];
-
-      if (optionKey === compareValue) {
-        return currentPath;
-      }
-      if (option.children && option.children.length > 0) {
-        const found = findDeptPath(deptId, option.children, currentPath);
-        if (found) {
-          return found;
-        }
-      }
-    }
-    return null;
-  };
-
   // 处理审批详情数据变化，设置表单值
   useEffect(() => {
     if (approvalDetail) {
@@ -116,40 +96,13 @@ export default function ApprovalDetailClient({
       const values = await form.validate();
       setSaving(true);
 
-      // 处理部门信息
-      let deptLevel1Id: number | undefined;
-      let deptLevel2Id: number | undefined;
-      let deptLevel3Id: number | undefined;
-      let deptFullPath: string | undefined;
-
-      if (values.applicationDepartment) {
-        const deptPath = findDeptPath(values.applicationDepartment, departmentOptions);
-        if (deptPath && deptPath.length > 0) {
-          // 根据路径长度确定部门层级
-          if (deptPath.length >= 1) {
-            deptLevel1Id = parseInt(String(deptPath[0].key));
-          }
-          if (deptPath.length >= 2) {
-            deptLevel2Id = parseInt(String(deptPath[1].key));
-          }
-          if (deptPath.length >= 3) {
-            deptLevel3Id = parseInt(String(deptPath[2].key));
-          }
-          // 构建完整路径
-          deptFullPath = deptPath.map((dept) => dept.title).join('/');
-        }
-      }
-
-      // 构建请求数据
+      // 构建请求数据（只传递部门ID，服务端会自动构建完整路径）
       const requestData = {
         projectName: values.projectName,
         approvalContent: values.approvalContent,
         executeDate: values.executionDate ? dayjs(values.executionDate).toISOString() : new Date().toISOString(),
         applicantId: user.id,
-        deptLevel1Id: deptLevel1Id || null,
-        deptLevel2Id: deptLevel2Id || null,
-        deptLevel3Id: deptLevel3Id || null,
-        deptFullPath: deptFullPath || null,
+        deptId: values.applicationDepartment || null, // 只传递部门ID
       };
 
       // 调用 Server Action 保存数据

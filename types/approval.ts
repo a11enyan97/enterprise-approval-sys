@@ -79,3 +79,26 @@ export interface GetApprovalListParams {
   deptLevel3Id?: number;
 }
 
+/**
+ * 创建审批申请的输入参数
+ */
+export interface CreateApprovalRequestInput {
+  projectName: string;
+  approvalContent?: string;
+  deptId?: number | string | null;
+  deptFullPath?: string;
+  deptLevel1Id?: number | null;
+  deptLevel2Id?: number | null;
+  deptLevel3Id?: number | null;
+  executeDate: string | Date;
+  applicantId: number;
+}
+
+/**
+ * 提交/更新审批申请的可更新字段
+ */
+export interface SubmitApprovalRequestInput
+  extends Partial<Omit<CreateApprovalRequestInput, "applicantId">> {
+  deptId?: number | string | null;
+  currentStatus?: "draft" | "pending" | "approved" | "rejected";
+}

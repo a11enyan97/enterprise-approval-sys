@@ -1,5 +1,5 @@
 import { getDepartmentCascaderOptions } from "@/services/departments.service";
-import ApprovalLayoutClient from "./approval-layout-client";
+import ApprovalLayoutClient from "../../components/business/approval/approval-layout-client";
 
 export default async function ApprovalLayout({
   children,

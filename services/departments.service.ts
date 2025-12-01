@@ -106,3 +106,86 @@ export async function getDepartmentCascaderOptions(): Promise<
   return convertToCascaderOptions(departments);
 }
 
+/**
+ * 部门路径信息
+ */
+export interface DepartmentPathInfo {
+  deptLevel1Id: number | null;
+  deptLevel2Id: number | null;
+  deptLevel3Id: number | null;
+  deptFullPath: string;
+}
+
+/**
+ * 根据部门ID查找完整路径和层级信息
+ * @param deptId 部门ID
+ * @returns 部门路径信息，如果部门不存在则返回 null
+ */
+export async function getDepartmentPathInfo(
+  deptId: number | string | null | undefined
+): Promise<DepartmentPathInfo | null> {
+  if (!deptId) {
+    return null;
+  }
+
+  const id = typeof deptId === "string" ? parseInt(deptId) : deptId;
+  if (isNaN(id)) {
+    return null;
+  }
+
+  // 查找部门及其所有父级部门
+  const path: Array<{ id: number; deptName: string; level: number }> = [];
+  let currentDeptId: number | null = id;
+
+  // 向上查找直到根节点
+  while (currentDeptId !== null) {
+    const dept = await prisma.department.findUnique({
+      where: { id: currentDeptId },
+      select: {
+        id: true,
+        deptName: true,
+        level: true,
+        parentId: true,
+      },
+    });
+
+    if (!dept) {
+      return null; // 部门不存在
+    }
+
+    path.unshift({
+      id: dept.id,
+      deptName: dept.deptName,
+      level: dept.level,
+    });
+
+    currentDeptId = dept.parentId;
+  }
+
+  // 根据路径长度确定各层级ID
+  let deptLevel1Id: number | null = null;
+  let deptLevel2Id: number | null = null;
+  let deptLevel3Id: number | null = null;
+
+  // 根据level字段确定层级
+  for (const dept of path) {
+    if (dept.level === 1) {
+      deptLevel1Id = dept.id;
+    } else if (dept.level === 2) {
+      deptLevel2Id = dept.id;
+    } else if (dept.level === 3) {
+      deptLevel3Id = dept.id;
+    }
+  }
+
+  // 构建完整路径
+  const deptFullPath = path.map((dept) => dept.deptName).join("/");
+
+  return {
+    deptLevel1Id,
+    deptLevel2Id,
+    deptLevel3Id,
+    deptFullPath,
+  };
+}
+

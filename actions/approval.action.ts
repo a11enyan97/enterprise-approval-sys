@@ -9,11 +9,12 @@ import {
   deleteApprovalRequest,
 } from "@/services/approval.service";
 import { handleApiError } from "@/services/_shared/errors";
+import type { CreateApprovalRequestInput, GetApprovalListParams } from "@/types/approval";
 
 /**
  * 创建审批申请
  */
-export async function createApprovalAction(params: any) {
+export async function createApprovalAction(params: CreateApprovalRequestInput) {
   try {
     const approval = await createApprovalRequest(params);
     return {
@@ -30,17 +31,28 @@ export async function createApprovalAction(params: any) {
 }
 
 /**
+ * 删除审批申请
+ */
+export async function deleteApprovalAction(requestId: string) {
+  try {
+    const deleted = await deleteApprovalRequest(BigInt(requestId));
+    return {
+      success: true,
+      data: deleted,
+    };
+  } catch (error) {
+    const errorResponse = handleApiError(error, "删除审批申请失败");
+    return {
+      success: false,
+      ...errorResponse,
+    };
+  }
+}
+
+/**
  * 获取审批申请列表
  */
-export async function getApprovalListAction(params?: {
-  page?: number;
-  pageSize?: number;
-  applicantId?: number;
-  status?: string;
-  deptLevel1Id?: number;
-  deptLevel2Id?: number;
-  deptLevel3Id?: number;
-}) {
+export async function getApprovalListAction(params?: GetApprovalListParams) {
   try {
     const result = await getApprovalRequestList(params);
     return {
@@ -147,22 +159,4 @@ export async function approveOrRejectAction(
   }
 }
 
-/**
- * 删除审批申请
- */
-export async function deleteApprovalAction(requestId: string) {
-  try {
-    const deleted = await deleteApprovalRequest(BigInt(requestId));
-    return {
-      success: true,
-      data: deleted,
-    };
-  } catch (error) {
-    const errorResponse = handleApiError(error, "删除审批申请失败");
-    return {
-      success: false,
-      ...errorResponse,
-    };
-  }
-}
 

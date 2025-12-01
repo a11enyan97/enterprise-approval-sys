@@ -5,29 +5,8 @@ import {
   ValidationError,
 } from "./_shared/validators";
 import { serialize } from "./_shared/utils";
-import { ApprovalStatus } from "@/types/approval";
-
-/**
- * 创建审批申请的输入参数
- */
-export interface CreateApprovalRequestInput {
-  projectName: string;
-  approvalContent?: string;
-  deptFullPath?: string;
-  deptLevel1Id?: number | null;
-  deptLevel2Id?: number | null;
-  deptLevel3Id?: number | null;
-  executeDate: string | Date;
-  applicantId: number;
-}
-
-/**
- * 提交/更新审批申请的可更新字段
- */
-export interface SubmitApprovalRequestInput
-  extends Partial<Omit<CreateApprovalRequestInput, "applicantId">> {
-  currentStatus?: "draft" | "pending" | "approved" | "rejected";
-}
+import { getDepartmentPathInfo } from "./departments.service";
+import type { CreateApprovalRequestInput, SubmitApprovalRequestInput, GetApprovalListParams } from "@/types/approval";
 
 /**
  * 创建审批申请的业务逻辑
@@ -39,31 +18,51 @@ export async function createApprovalRequest(
 ) {
   // 1. 数据验证：检查外键关联的数据是否存在
   await validateUserExists(input.applicantId);
-  await validateDepartments(
-    input.deptLevel1Id,
-    input.deptLevel2Id,
-    input.deptLevel3Id
-  );
 
-  // 2. 生成审批单号（使用时间戳确保唯一性）
+  // 2. 处理部门信息：如果提供了 deptId，则根据 deptId 构建完整路径
+  let deptLevel1Id: number | null = input.deptLevel1Id ?? null;
+  let deptLevel2Id: number | null = input.deptLevel2Id ?? null;
+  let deptLevel3Id: number | null = input.deptLevel3Id ?? null;
+  let deptFullPath: string | null = input.deptFullPath ?? null;
+
+  if (input.deptId) {
+    // 根据部门ID查找完整路径信息
+    const deptPathInfo = await getDepartmentPathInfo(input.deptId);
+    if (!deptPathInfo) {
+      throw new ValidationError(
+        `部门ID ${input.deptId} 不存在`,
+        "deptId",
+        "DEPARTMENT_NOT_FOUND"
+      );
+    }
+    deptLevel1Id = deptPathInfo.deptLevel1Id;
+    deptLevel2Id = deptPathInfo.deptLevel2Id;
+    deptLevel3Id = deptPathInfo.deptLevel3Id;
+    deptFullPath = deptPathInfo.deptFullPath;
+  }
+
+  // 验证部门信息
+  await validateDepartments(deptLevel1Id, deptLevel2Id, deptLevel3Id);
+
+  // 3. 生成审批单号（使用时间戳确保唯一性）
   const requestNo = `APP${Date.now()}`;
 
-  // 3. 处理日期字段，确保转换为 Date 对象
+  // 4. 处理日期字段，确保转换为 Date 对象
   const executeDate =
     input.executeDate instanceof Date
       ? input.executeDate
       : new Date(input.executeDate);
 
-  // 4. 创建审批申请
+  // 5. 创建审批申请
   const approval = await prisma.approvalRequest.create({
     data: {
       requestNo,
       projectName: input.projectName,
       approvalContent: input.approvalContent,
-      deptFullPath: input.deptFullPath,
-      deptLevel1Id: input.deptLevel1Id,
-      deptLevel2Id: input.deptLevel2Id,
-      deptLevel3Id: input.deptLevel3Id,
+      deptFullPath,
+      deptLevel1Id,
+      deptLevel2Id,
+      deptLevel3Id,
       executeDate,
       applicantId: input.applicantId,
     },
@@ -112,15 +111,7 @@ export async function getApprovalRequestById(requestId: bigint) {
  * @param options 查询选项
  * @returns 审批申请列表和总数
  */
-export async function getApprovalRequestList(options?: {
-  page?: number;
-  pageSize?: number;
-  applicantId?: number;
-  status?: string;
-  deptLevel1Id?: number;
-  deptLevel2Id?: number;
-  deptLevel3Id?: number;
-}) {
+export async function getApprovalRequestList(options?: GetApprovalListParams) {
   const page = options?.page || 1;
   const pageSize = options?.pageSize || 10;
   const skip = (page - 1) * pageSize;
@@ -172,7 +163,7 @@ export async function getApprovalRequestList(options?: {
 }
 
 /**
- * 提交审批申请
+ * 申请人——提交审批申请
  * @param requestId 审批申请ID
  * @returns 更新后的审批申请记录
  * @throws ValidationError 如果申请不存在、不是 draft 状态
@@ -227,11 +218,6 @@ export async function submitApprovalRequest(
       }
       updateData.submittedAt = new Date();
     }
-    
-    // 如果状态改为 approved 或 rejected，设置完成时间
-    if (data.currentStatus === "approved" || data.currentStatus === "rejected") {
-      updateData.completedAt = new Date();
-    }
   } else if (data) {
     // 验证记录状态是否为 draft（只有 draft 状态可以修改）
     if (existingApproval.currentStatus !== "draft") {
@@ -242,12 +228,33 @@ export async function submitApprovalRequest(
       );
     }
 
-    // 校验部门信息
-    if (
+    // 处理部门信息：如果提供了 deptId，则根据 deptId 构建完整路径
+    if (data.deptId !== undefined) {
+      const deptPathInfo = await getDepartmentPathInfo(data.deptId);
+      if (!deptPathInfo) {
+        throw new ValidationError(
+          `部门ID ${data.deptId} 不存在`,
+          "deptId",
+          "DEPARTMENT_NOT_FOUND"
+        );
+      }
+      updateData.deptLevel1Id = deptPathInfo.deptLevel1Id;
+      updateData.deptLevel2Id = deptPathInfo.deptLevel2Id;
+      updateData.deptLevel3Id = deptPathInfo.deptLevel3Id;
+      updateData.deptFullPath = deptPathInfo.deptFullPath;
+      
+      // 验证部门信息
+      await validateDepartments(
+        updateData.deptLevel1Id,
+        updateData.deptLevel2Id,
+        updateData.deptLevel3Id
+      );
+    } else if (
       data.deptLevel1Id !== undefined ||
       data.deptLevel2Id !== undefined ||
       data.deptLevel3Id !== undefined
     ) {
+      // 如果直接提供了层级ID，则使用提供的值
       await validateDepartments(
         data.deptLevel1Id,
         data.deptLevel2Id,
@@ -267,7 +274,8 @@ export async function submitApprovalRequest(
     if (data.approvalContent !== undefined) {
       updateData.approvalContent = data.approvalContent;
     }
-    if (data.deptFullPath !== undefined) {
+    if (data.deptFullPath !== undefined && data.deptId === undefined) {
+      // 只有在没有提供 deptId 时才使用直接提供的 deptFullPath
       updateData.deptFullPath = data.deptFullPath;
     }
     if (data.executeDate) {

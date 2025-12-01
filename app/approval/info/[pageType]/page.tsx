@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getApprovalRequestById } from "@/services/approval.service";
 import { getDepartmentCascaderOptions } from "@/services/departments.service";
-import ApprovalDetailClient from "../../approval-detail-client";
+import ApprovalDetailClient from "../../../../components/business/approval/approval-detail-client";
 
 interface ApprovalDetailPageProps {
   params: Promise<{ pageType: string }>;
