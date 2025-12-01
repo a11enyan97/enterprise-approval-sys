@@ -1,5 +1,6 @@
 import { prisma } from "@/prisma/db";
 import { serialize } from "./_shared/utils";
+import { Department } from "./entities/Department.entity";
 
 /**
  * 树形选择器选项类型
@@ -139,7 +140,12 @@ export async function getDepartmentPathInfo(
 
   // 向上查找直到根节点
   while (currentDeptId !== null) {
-    const dept = await prisma.department.findUnique({
+    const dept: {
+      id: number;
+      deptName: string;
+      level: number;
+      parentId: number | null;
+    } | null = await prisma.department.findUnique({
       where: { id: currentDeptId },
       select: {
         id: true,

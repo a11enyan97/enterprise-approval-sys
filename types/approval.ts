@@ -74,8 +74,18 @@ export interface GetApprovalListParams {
   pageSize?: number;
   applicantId?: number;
   status?: ApprovalStatus | string;
+  deptId?: number; // 部门ID（前端只需传一个部门ID，服务端会根据该ID查询该部门及其子部门）
+  projectName?: string; // 项目名称（模糊查询）
+  createTimeStart?: string; // 创建时间开始（ISO 8601 格式）
+  createTimeEnd?: string; // 创建时间结束（ISO 8601 格式）
+  approvalTimeStart?: string; // 审批时间开始（ISO 8601 格式）
+  approvalTimeEnd?: string; // 审批时间结束（ISO 8601 格式）
+  // 以下字段已废弃，保留用于向后兼容，优先使用 deptId
+  /** @deprecated 使用 deptId 代替 */
   deptLevel1Id?: number;
+  /** @deprecated 使用 deptId 代替 */
   deptLevel2Id?: number;
+  /** @deprecated 使用 deptId 代替 */
   deptLevel3Id?: number;
 }
 
@@ -95,10 +105,9 @@ export interface CreateApprovalRequestInput {
 }
 
 /**
- * 提交/更新审批申请的可更新字段
+ * 提交/修改审批申请的可更新字段
  */
 export interface SubmitApprovalRequestInput
   extends Partial<Omit<CreateApprovalRequestInput, "applicantId">> {
-  deptId?: number | string | null;
   currentStatus?: "draft" | "pending" | "approved" | "rejected";
 }

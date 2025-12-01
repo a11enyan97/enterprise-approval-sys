@@ -123,13 +123,62 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
   if (options?.status) {
     where.currentStatus = options.status;
   }
-  // 部门筛选：如果指定了三级部门，则只查询该三级部门；否则如果指定了二级部门，则查询该二级部门下的所有三级部门；以此类推
-  if (options?.deptLevel3Id) {
-    where.deptLevel3Id = options.deptLevel3Id;
-  } else if (options?.deptLevel2Id) {
-    where.deptLevel2Id = options.deptLevel2Id;
-  } else if (options?.deptLevel1Id) {
-    where.deptLevel1Id = options.deptLevel1Id;
+  
+  // 项目名称模糊查询
+  if (options?.projectName) {
+    where.projectName = {
+      contains: options.projectName,
+    };
+  }
+  
+  // 创建时间范围查询
+  if (options?.createTimeStart || options?.createTimeEnd) {
+    where.createdAt = {};
+    if (options.createTimeStart) {
+      where.createdAt.gte = new Date(options.createTimeStart);
+    }
+    if (options.createTimeEnd) {
+      where.createdAt.lte = new Date(options.createTimeEnd);
+    }
+  }
+  
+  // 审批时间范围查询（completedAt 字段）
+  if (options?.approvalTimeStart || options?.approvalTimeEnd) {
+    where.completedAt = {};
+    if (options.approvalTimeStart) {
+      where.completedAt.gte = new Date(options.approvalTimeStart);
+    }
+    if (options.approvalTimeEnd) {
+      where.completedAt.lte = new Date(options.approvalTimeEnd);
+    }
+  }
+  
+  // 部门筛选：优先使用 deptId，如果提供了 deptId，则根据该部门ID查询该部门及其所有子部门
+  if (options?.deptId) {
+    // 根据部门ID获取部门路径信息
+    const deptPathInfo = await getDepartmentPathInfo(options.deptId);
+    if (deptPathInfo) {
+      // 根据部门层级确定查询条件
+      // 如果是指定的部门是三级部门，只查询该三级部门
+      // 如果是指定的部门是二级部门，查询该二级部门下的所有三级部门
+      // 如果是指定的部门是一级部门，查询该一级部门下的所有二级和三级部门
+      if (deptPathInfo.deptLevel3Id) {
+        where.deptLevel3Id = deptPathInfo.deptLevel3Id;
+      } else if (deptPathInfo.deptLevel2Id) {
+        where.deptLevel2Id = deptPathInfo.deptLevel2Id;
+      } else if (deptPathInfo.deptLevel1Id) {
+        where.deptLevel1Id = deptPathInfo.deptLevel1Id;
+      }
+    }
+  } else {
+    // 向后兼容：如果没有提供 deptId，则使用旧的层级ID方式
+    if (options?.deptLevel3Id) {
+      where.deptLevel3Id = options.deptLevel3Id;
+    } else if (options?.deptLevel2Id) {
+      where.deptLevel2Id = options.deptLevel2Id;
+    } else if (options?.deptLevel1Id) {
+      where.deptLevel1Id = options.deptLevel1Id;
+    }
   }
 
   const [data, total] = await Promise.all([
