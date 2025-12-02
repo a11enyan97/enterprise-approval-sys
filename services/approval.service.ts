@@ -17,7 +17,7 @@ export async function createApprovalRequest(
   input: CreateApprovalRequestInput
 ) {
   // 1. 数据验证：检查外键关联的数据是否存在
-  await validateUserExists(input.applicantId);
+  await validateUserExists(input.applicantId);// 验证用户是否存在
 
   // 2. 处理部门信息：如果提供了 deptId，则根据 deptId 构建完整路径
   let deptLevel1Id: number | null = input.deptLevel1Id ?? null;
@@ -77,6 +77,40 @@ export async function createApprovalRequest(
       },
     },
   });
+
+  // 6. 创建附件记录（如果有附件）
+  if (input.attachments && input.attachments.length > 0) {
+    await prisma.approvalAttachment.createMany({
+      data: input.attachments.map((att) => ({
+        requestId: approval.id,
+        attachmentType: att.attachmentType,
+        fileName: att.fileName,
+        filePath: att.filePath,
+        fileSize: typeof att.fileSize === 'string' ? BigInt(att.fileSize) : BigInt(att.fileSize || 0),
+        mimeType: att.mimeType || null,
+        uploaderId: input.applicantId,
+      })),
+    });
+
+    // 重新查询以包含附件信息
+    const approvalWithAttachments = await prisma.approvalRequest.findUnique({
+      where: { id: approval.id },
+      include: {
+        applicant: {
+          select: {
+            id: true,
+            realName: true,
+            username: true,
+          },
+        },
+        attachments: true,
+      },
+    });
+
+    if (approvalWithAttachments) {
+      return serialize(approvalWithAttachments);
+    }
+  }
 
   // 将 BigInt 字段转换为字符串，避免序列化错误
   return serialize(approval);
@@ -351,7 +385,49 @@ export async function submitApprovalRequest(
     },
   });
 
-  // 6. 将 BigInt 字段转换为字符串，避免序列化错误
+  // 6. 处理附件（如果提供了附件信息）
+  if (data?.attachments !== undefined) {
+    // 删除旧的附件
+    await prisma.approvalAttachment.deleteMany({
+      where: { requestId: id },
+    });
+
+    // 创建新的附件（如果有）
+    if (data.attachments.length > 0) {
+      await prisma.approvalAttachment.createMany({
+        data: data.attachments.map((att) => ({
+          requestId: id,
+          attachmentType: att.attachmentType,
+          fileName: att.fileName,
+          filePath: att.filePath,
+          fileSize: typeof att.fileSize === 'string' ? BigInt(att.fileSize) : BigInt(att.fileSize || 0),
+          mimeType: att.mimeType || null,
+          uploaderId: existingApproval.applicantId, // 使用申请人的ID作为上传人
+        })),
+      });
+    }
+
+    // 重新查询以包含最新的附件
+    const approvalWithAttachments = await prisma.approvalRequest.findUnique({
+      where: { id },
+      include: {
+        applicant: {
+          select: {
+            id: true,
+            realName: true,
+            username: true,
+          },
+        },
+        attachments: true,
+      },
+    });
+
+    if (approvalWithAttachments) {
+      return serialize(approvalWithAttachments);
+    }
+  }
+
+  // 7. 将 BigInt 字段转换为字符串，避免序列化错误
   return serialize(updatedApproval);
 }
 

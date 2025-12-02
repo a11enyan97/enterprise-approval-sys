@@ -90,6 +90,17 @@ export interface GetApprovalListParams {
 }
 
 /**
+ * 附件输入参数
+ */
+export interface AttachmentInput {
+  filePath: string;
+  fileName: string;
+  attachmentType: 'image' | 'table';
+  fileSize?: number | string; // 文件大小（字节），可以是数字或字符串（BigInt）
+  mimeType?: string | null; // MIME 类型
+}
+
+/**
  * 创建审批申请的输入参数
  */
 export interface CreateApprovalRequestInput {
@@ -102,6 +113,7 @@ export interface CreateApprovalRequestInput {
   deptLevel3Id?: number | null;
   executeDate: string | Date;
   applicantId: number;
+  attachments?: AttachmentInput[]; // 附件列表
 }
 
 /**
@@ -110,4 +122,5 @@ export interface CreateApprovalRequestInput {
 export interface SubmitApprovalRequestInput
   extends Partial<Omit<CreateApprovalRequestInput, "applicantId">> {
   currentStatus?: "draft" | "pending" | "approved" | "rejected";
+  attachments?: AttachmentInput[]; // 附件列表（编辑时使用）
 }

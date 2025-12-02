@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, Input, DatePicker, TreeSelect, Button, Grid, Upload, Message, Spin } from "@arco-design/web-react";
+import { Form, Button, Message, Spin } from "@arco-design/web-react";
 import { IconArrowLeft } from "@arco-design/web-react/icon";
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
@@ -10,10 +10,7 @@ import { getOSSTokenAction } from "@/actions/oss.action";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem } from "@/types/approval";
 import type { CascaderOption } from "@/types/departments";
-
-const FormItem = Form.Item;
-const { Row, Col } = Grid;
-const TextArea = Input.TextArea;
+import ApprovalForm from "./approval-form-client";
 
 interface ApprovalDetailClientProps {
   pageType: string;
@@ -63,6 +60,7 @@ export default function ApprovalDetailClient({
           uid: att.id,
           url: att.filePath,
           name: att.fileName,
+          status: 'done',
         })) || [];
 
       const tableAttachments = approvalDetail.attachments
@@ -71,6 +69,7 @@ export default function ApprovalDetailClient({
           uid: att.id,
           url: att.filePath,
           name: att.fileName,
+          status: 'done',
         })) || [];
 
       // 设置表单值
@@ -93,19 +92,67 @@ export default function ApprovalDetailClient({
     }
 
     try {
+      // 1. 表单校验通过的表单数据
       const values = await form.validate();
       setSaving(true);
 
-      // 构建请求数据（只传递部门ID，服务端会自动构建完整路径）
+      // 2. 先上传所有待上传的附件
+      const imageFileList = values.imageAttachments || [];
+      const tableFileList = values.tableAttachments || [];
+
+      const [imageAttachments, tableAttachments] = await Promise.all([
+        uploadAllAttachments(imageFileList, 'image'),
+        uploadAllAttachments(tableFileList, 'table'),
+      ]);
+ 
+      // 合并所有附件（包括新上传的和已存在的）
+      const allAttachments = [
+        ...imageAttachments,  // 新上传的图片
+        ...tableAttachments,  // 新上传的表格
+        // 已存在的附件（编辑时才有，有 url 但没有 originFile）
+        ...imageFileList
+          .filter((file: any) => file.url && !file.originFile)
+          .map((file: any) => {
+            // 从 approvalDetail 中查找对应的附件信息
+            const originalAtt = approvalDetail?.attachments?.find(
+              (att) => att.attachmentType === 'image' && att.filePath === file.url
+            );
+            return {
+              filePath: file.url,
+              fileName: file.name,
+              attachmentType: 'image' as const,
+              fileSize: originalAtt?.fileSize ? parseInt(originalAtt.fileSize, 10) : 0,
+              mimeType: originalAtt?.mimeType || null,
+            };
+          }),
+        ...tableFileList
+          .filter((file: any) => file.url && !file.originFile)
+          .map((file: any) => {
+            // 从 approvalDetail 中查找对应的附件信息
+            const originalAtt = approvalDetail?.attachments?.find(
+              (att) => att.attachmentType === 'table' && att.filePath === file.url
+            );
+            return {
+              filePath: file.url,
+              fileName: file.name,
+              attachmentType: 'table' as const,
+              fileSize: originalAtt?.fileSize ? parseInt(originalAtt.fileSize, 10) : 0,
+              mimeType: originalAtt?.mimeType || null,
+            };
+          }),
+      ];
+
+      // 3. 构建请求数据（只传递部门ID，服务端会自动构建完整路径）
       const requestData = {
         projectName: values.projectName,
         approvalContent: values.approvalContent,
         executeDate: values.executionDate ? dayjs(values.executionDate).toISOString() : new Date().toISOString(),
         applicantId: user.id,
         deptId: values.applicationDepartment || null, // 只传递部门ID
+        attachments: allAttachments,
       };
 
-      // 调用 Server Action 保存数据
+      // 3. 调用 Server Action 保存数据
       if (pageType === "add") {
         // 新建
         const result = await createApprovalAction(requestData);
@@ -131,71 +178,76 @@ export default function ApprovalDetailClient({
     }
   };
 
-  // 判断文件是否符合上传要求
-  const isAcceptFile = (file: File, accept: string) => {
-    if (accept && file) {
-      const accepts = Array.isArray(accept)
-        ? accept
-        : accept
-            .split(',')
-            .map((x) => x.trim())
-            .filter((x) => x);
-      const fileExtension = file.name.indexOf('.') > -1 ? file.name.split('.').pop() : '';
-      return accepts.some((type) => {
-        const text = type && type.toLowerCase();
-        const fileType = (file.type || '').toLowerCase();
-        if (text === fileType) {
-          return true;
-        }
-        if (new RegExp('\/\*').test(text)) {
-          const regExp = new RegExp('\/.*$');
-          return fileType.replace(regExp, '') === text.replace(regExp, '');
-        }
-        if (new RegExp('\..*').test(text)) {
-          return text === `.${fileExtension && fileExtension.toLowerCase()}`;
-        }
-        return false;
-      });
-    }
-    return !!file;
+
+
+  // 自定义上传函数：不立即上传，只保存文件到本地，等待用户点击保存时统一上传
+  const customRequest = async (option: any) => {
+    const { onSuccess, file } = option;
+
+    onSuccess({
+      name: file.name,
+      // 不设置 url，表示这是待上传的文件
+      // 保存原始文件对象，用于后续上传
+      originFile: file,
+    });
   };
 
-  // 自定义上传函数：使用 OSS 预签名 URL
-  const customRequest = async (option: any) => {
-    const { onProgress, onError, onSuccess, file } = option;
-
-    try {
-      // 1. 获取预签名 URL（使用 Server Action）
-      const tokenResult = await getOSSTokenAction(file.name, file.type || 'application/octet-stream');
-      
-      if (!tokenResult.success) {
-        throw new Error("error" in tokenResult ? tokenResult.error : '获取上传地址失败');
-      }
-
-      const { uploadUrl, publicUrl } = tokenResult;
-
-      // 2. 使用预签名 URL 上传文件到 OSS
-      const uploadContentType = file.type || 'application/octet-stream';
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': uploadContentType,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`文件上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      }
-
-      onSuccess({
-        url: publicUrl,
-        name: file.name,
-      });
-    } catch (error: any) {
-      Message.error(error?.message || '上传失败，请重试');
-      onError(error);
+  // 上传单个文件到 OSS
+  const uploadFileToOSS = async (file: File): Promise<{ url: string; filename: string }> => {
+    // 1. 获取预签名 URL
+    const tokenResult = await getOSSTokenAction(file.name, file.type || 'application/octet-stream');
+    
+    if (!tokenResult.success) {
+      throw new Error("error" in tokenResult ? tokenResult.error : '获取上传地址失败');
     }
+
+    // 2. 使用预签名 URL 上传文件到 OSS
+    const { uploadUrl, publicUrl, filename } = tokenResult;
+    const uploadContentType = file.type || 'application/octet-stream';
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': uploadContentType,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`文件上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
+    }
+
+    return { url: publicUrl, filename };
+  };
+
+  // 上传所有待上传的附件
+  const uploadAllAttachments = async (
+    fileList: any[],
+    attachmentType: 'image' | 'table'
+  ): Promise<Array<{ 
+    filePath: string; 
+    fileName: string; 
+    attachmentType: 'image' | 'table';
+    fileSize: number;
+    mimeType: string | null;
+  }>> => {
+    const uploadPromises = fileList
+      .filter((file) => {
+        // 只上传没有 url 的文件（新选择的文件）
+        // 已有 url 的文件是已上传的，不需要重新上传
+        return !file.url && file.originFile;
+      })
+      .map(async (file) => {
+        const result = await uploadFileToOSS(file.originFile);
+        return {
+          filePath: result.url,
+          fileName: file.name || file.originFile.name,
+          attachmentType,
+          fileSize: file.originFile.size || 0,
+          mimeType: file.originFile.type || null,
+        };
+      });
+
+    return Promise.all(uploadPromises);
   };
 
   return (
@@ -216,109 +268,16 @@ export default function ApprovalDetailClient({
       {/* 表单内容 */}
       <div className="bg-white rounded-md p-6">
         <Spin loading={saving} style={{ width: '100%' }}>
-          <Form
+          <ApprovalForm
             form={form}
-            layout="horizontal"
-            {...formItemLayout}
-          >
-            <FormItem
-              label="审批项目"
-              field="projectName"
-              rules={[{ required: !isReadOnly, message: '请输入审批项目' }]}
-            >
-              <Input
-                placeholder="请输入审批项目"
-                disabled={isReadOnly}
-                style={{ width: '100%' }}
-              />
-            </FormItem>
-            <FormItem
-              label="申请部门"
-              field="applicationDepartment"
-              rules={[{ required: !isReadOnly, message: '请选择申请部门' }]}
-            >
-              <TreeSelect
-                treeData={departmentOptions}
-                placeholder="请选择部门"
-                allowClear
-                style={{ width: "100%" }}
-                disabled={isReadOnly}
-                loading={deptLoading}
-                fieldNames={{
-                  title: "title",
-                  key: "key",
-                  children: "children",
-                }}
-              />
-            </FormItem>
-            <FormItem
-              label="审批内容"
-              field="approvalContent"
-              rules={[
-                { required: !isReadOnly, message: '请输入审批内容' },
-                { maxLength: 300, message: '审批内容不能超过300字' }
-              ]}
-            >
-              <TextArea
-                placeholder="请输入审批内容，限制300字内"
-                disabled={isReadOnly}
-                maxLength={300}
-                showWordLimit
-                autoSize={{ minRows: 4, maxRows: 8 }}
-                style={{ width: '100%' }}
-              />
-            </FormItem>
-
-            <FormItem
-              label="执行日期"
-              field="executionDate"
-              rules={[{ required: !isReadOnly, message: '请选择执行日期' }]}
-            >
-              <DatePicker
-                placeholder="请选择执行日期"
-                disabled={isReadOnly}
-                style={{ width: '100%' }}
-                format="YYYY-MM-DD"
-              />
-            </FormItem>
-            <FormItem
-              label="图片附件"
-              field="imageAttachments"
-              triggerPropName='fileList'
-            >
-              <Upload
-                multiple
-                imagePreview
-                limit={3}
-                customRequest={customRequest}
-                listType='picture-card'
-                disabled={isReadOnly}
-              />
-            </FormItem>
-            <FormItem
-              label="表格附件"
-              field="tableAttachments"
-              triggerPropName="fileList"
-            >
-              <Upload
-                customRequest={customRequest}
-                accept='.xlsx,.xls'
-                disabled={isReadOnly}
-              />
-            </FormItem>
-
-            {!isReadOnly && (
-              <Row>
-                <Col span={24}>
-                  <FormItem>
-                    <Button type="primary" onClick={handleSave} loading={saving}>
-                      保存
-                    </Button>
-                  </FormItem>
-                </Col>
-              </Row>
-            )}
-          </Form>
+            isReadOnly={isReadOnly}
+            departmentOptions={departmentOptions}
+            deptLoading={deptLoading}
+            customRequest={customRequest}
+            saving={saving}
+            onSave={handleSave}
+            formItemLayout={formItemLayout}
+          />
         </Spin>
       </div>
     </div>

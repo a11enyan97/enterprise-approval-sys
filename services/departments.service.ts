@@ -1,6 +1,5 @@
 import { prisma } from "@/prisma/db";
 import { serialize } from "./_shared/utils";
-import { Department } from "./entities/Department.entity";
 
 /**
  * 树形选择器选项类型

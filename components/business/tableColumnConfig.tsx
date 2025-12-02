@@ -65,6 +65,12 @@ export function getApprovalTableColumns(
 
   return [
     {
+      title: '项目名称',
+      dataIndex: 'projectName',
+      align: 'center',
+      ellipsis: true,
+    },
+    {
       title: '审核状态',
       dataIndex: 'currentStatus',
       align: 'center',
@@ -87,12 +93,6 @@ export function getApprovalTableColumns(
       dataIndex: 'completedAt',
       align: 'center',
       render: (date: string | null) => formatDateTime(date),
-    },
-    {
-      title: '审批项目',
-      dataIndex: 'projectName',
-      align: 'center',
-      ellipsis: true,
     },
     {
       title: '申请人',

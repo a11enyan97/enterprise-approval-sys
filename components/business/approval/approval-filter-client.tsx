@@ -11,26 +11,34 @@ const { Row, Col } = Grid;
 const { RangePicker } = DatePicker;
 
 interface ApprovalFilterClientProps {
-  initialValues: {
-    status?: string;
-    deptLevel1Id?: string;
-    deptLevel2Id?: string;
-    deptLevel3Id?: string;
-    approvalProject?: string;
-    createTimeRange?: string;
-    approvalTimeRange?: string;
-  };
   departmentOptions: CascaderOption[];
 }
 
 export default function ApprovalFilterClient({
-  initialValues,
   departmentOptions,
 }: ApprovalFilterClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form] = Form.useForm();
   const [deptLoading, setDeptLoading] = useState(false);
+
+  // 从 URL 获取筛选参数作为初始值
+  const createTimeStart = searchParams.get("createTimeStart");
+  const createTimeEnd = searchParams.get("createTimeEnd");
+  const approvalTimeStart = searchParams.get("approvalTimeStart");
+  const approvalTimeEnd = searchParams.get("approvalTimeEnd");
+
+  const initialValues = {
+    status: searchParams.get("status") || undefined,
+    deptId: searchParams.get("deptId") || undefined,
+    projectName: searchParams.get("projectName") || undefined,
+    createTimeRange: createTimeStart && createTimeEnd
+      ? [new Date(createTimeStart), new Date(createTimeEnd)]
+      : undefined,
+    approvalTimeRange: approvalTimeStart && approvalTimeEnd
+      ? [new Date(approvalTimeStart), new Date(approvalTimeEnd)]
+      : undefined,
+  };
 
   // 审批状态选项
   const approvalStatusOptions = [
@@ -55,28 +63,47 @@ export default function ApprovalFilterClient({
       if (values.approvalStatus) {
         params.set("status", values.approvalStatus);
       }
+      
+      // 部门ID：只传递选中的部门ID，不再传递三级部门ID
       if (values.applicationDepartment) {
-        // 查找部门路径
-        const deptPath = findDeptPath(values.applicationDepartment, departmentOptions);
-        if (deptPath) {
-          if (deptPath.length >= 1) {
-            params.set("deptLevel1Id", String(deptPath[0]));
-          }
-          if (deptPath.length >= 2) {
-            params.set("deptLevel2Id", String(deptPath[1]));
-          }
-          if (deptPath.length >= 3) {
-            params.set("deptLevel3Id", String(deptPath[2]));
-          }
-        } else {
-          const deptIdNum = typeof values.applicationDepartment === 'string' 
-            ? parseInt(values.applicationDepartment) 
-            : values.applicationDepartment;
-          params.set("deptLevel3Id", String(deptIdNum));
+        const deptId = typeof values.applicationDepartment === 'string' 
+          ? parseInt(values.applicationDepartment) 
+          : values.applicationDepartment;
+        if (!isNaN(deptId)) {
+          params.set("deptId", String(deptId));
         }
       }
+      
+      // 项目名称
       if (values.approvalProject) {
-        params.set("approvalProject", values.approvalProject);
+        params.set("projectName", values.approvalProject);
+      }
+      
+      // 创建时间范围（Arco Design RangePicker 返回的是 Date 对象数组）
+      if (values.createTimeRange && Array.isArray(values.createTimeRange) && values.createTimeRange.length === 2) {
+        const [start, end] = values.createTimeRange;
+        if (start) {
+          // 如果是 Date 对象，直接转换；如果是字符串，先转换为 Date
+          const startDate = start instanceof Date ? start : new Date(start);
+          params.set("createTimeStart", startDate.toISOString());
+        }
+        if (end) {
+          const endDate = end instanceof Date ? end : new Date(end);
+          params.set("createTimeEnd", endDate.toISOString());
+        }
+      }
+      
+      // 审批时间范围（Arco Design RangePicker 返回的是 Date 对象数组）
+      if (values.approvalTimeRange && Array.isArray(values.approvalTimeRange) && values.approvalTimeRange.length === 2) {
+        const [start, end] = values.approvalTimeRange;
+        if (start) {
+          const startDate = start instanceof Date ? start : new Date(start);
+          params.set("approvalTimeStart", startDate.toISOString());
+        }
+        if (end) {
+          const endDate = end instanceof Date ? end : new Date(end);
+          params.set("approvalTimeEnd", endDate.toISOString());
+        }
       }
       
       // 重置到第一页
@@ -86,7 +113,7 @@ export default function ApprovalFilterClient({
     }).catch((error) => {
       console.error("表单验证失败:", error);
     });
-  }, [form, router, searchParams, departmentOptions]);
+  }, [form, router, searchParams]);
 
   // 清空已选
   const handleClear = useCallback(() => {
@@ -100,24 +127,6 @@ export default function ApprovalFilterClient({
     router.push(`/approval?${params.toString()}`);
   }, [form, router, searchParams]);
 
-  // 查找部门路径
-  const findDeptPath = (deptId: string | number, options: CascaderOption[], path: number[] = []): number[] | null => {
-    for (const option of options) {
-      const optionValue = typeof option.key === 'string' ? parseInt(option.key) : (option.key as number);
-      const currentPath = [...path, optionValue];
-      const compareValue = typeof deptId === 'string' ? parseInt(deptId) : deptId;
-      if (optionValue === compareValue) {
-        return currentPath;
-      }
-      if (option.children && option.children.length > 0) {
-        const found = findDeptPath(deptId, option.children, currentPath);
-        if (found) {
-          return found;
-        }
-      }
-    }
-    return null;
-  };
 
   return (
     <div className="bg-white rounded-md p-4 mb-4">
@@ -128,7 +137,10 @@ export default function ApprovalFilterClient({
           style={{ marginTop: "16px" }}
           initialValues={{
             approvalStatus: initialValues.status,
-            approvalProject: initialValues.approvalProject,
+            approvalProject: initialValues.projectName,
+            applicationDepartment: initialValues.deptId,
+            createTimeRange: initialValues.createTimeRange,
+            approvalTimeRange: initialValues.approvalTimeRange,
           }}
         >
           <Row gutter={16}>

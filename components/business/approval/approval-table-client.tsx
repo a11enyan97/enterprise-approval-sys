@@ -270,6 +270,7 @@ export default function ApprovalTableClient({
           <Table
             columns={columns}
             data={initialData.data || []}
+            rowKey="id"
             stripe
             style={{ width: '100%' }}
             pagination={{
