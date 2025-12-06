@@ -13,6 +13,14 @@ export enum ApprovalStatus {
 }
 
 /**
+ * 用户角色枚举
+ */
+export enum UserRole {
+  APPLICANT = "applicant",
+  APPROVER = "approver",
+}
+
+/**
  * 审批附件项
  */
 export interface ApprovalAttachmentItem {
@@ -80,13 +88,6 @@ export interface GetApprovalListParams {
   createTimeEnd?: string; // 创建时间结束（ISO 8601 格式）
   approvalTimeStart?: string; // 审批时间开始（ISO 8601 格式）
   approvalTimeEnd?: string; // 审批时间结束（ISO 8601 格式）
-  // 以下字段已废弃，保留用于向后兼容，优先使用 deptId
-  /** @deprecated 使用 deptId 代替 */
-  deptLevel1Id?: number;
-  /** @deprecated 使用 deptId 代替 */
-  deptLevel2Id?: number;
-  /** @deprecated 使用 deptId 代替 */
-  deptLevel3Id?: number;
 }
 
 /**

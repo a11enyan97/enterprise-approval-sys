@@ -1,26 +1,12 @@
 /**
- * 审批相关工具函数
+ * 审批表格列配置
  */
 
 import { Button } from "@arco-design/web-react";
 import type { TableColumnProps } from "@arco-design/web-react";
 import type { ApprovalRequestItem, ApprovalStatus } from "@/types/approval";
 import { formatDateTime } from "@/utils/format";
-
-/**
- * 审批状态映射
- * @param status 审批状态
- * @returns 状态的中文标签
- */
-export function getStatusLabel(status: ApprovalStatus | string): string {
-  const statusMap: Record<string, string> = {
-    draft: "草稿",
-    pending: "待审批",
-    approved: "已通过",
-    rejected: "已拒绝",
-  };
-  return statusMap[status] || status;
-}
+import { getStatusLabel } from "@/utils/approval";
 
 /**
  * 审批表格列配置参数
@@ -29,9 +15,11 @@ export interface ApprovalTableColumnsOptions {
   user: { id: number } | null;
   isApplicant: () => boolean;
   isApprover: () => boolean;
-  submittingIds: Set<string>;
-  approvingIds: Set<string>;
-  deletingIds: Set<string>;
+  approvalStatus: {
+    submittingIds: Set<string>;
+    approvingIds: Set<string>;
+    deletingIds: Set<string>;
+  };
   onView: (record: ApprovalRequestItem) => void;
   onEdit: (record: ApprovalRequestItem) => void;
   onSubmit: (record: ApprovalRequestItem) => void;
@@ -52,9 +40,7 @@ export function getApprovalTableColumns(
     user,
     isApplicant,
     isApprover,
-    submittingIds,
-    approvingIds,
-    deletingIds,
+    approvalStatus,
     onView,
     onEdit,
     onSubmit,
@@ -121,7 +107,7 @@ export function getApprovalTableColumns(
                   type="text" 
                   size="small" 
                   onClick={() => onSubmit(record)}
-                  loading={submittingIds.has(record.id)}
+                  loading={approvalStatus.submittingIds.has(record.id)}
                 >
                   提交
                 </Button>
@@ -130,7 +116,7 @@ export function getApprovalTableColumns(
                   size="small" 
                   status="danger"
                   onClick={() => onDelete(record)}
-                  loading={deletingIds.has(record.id)}
+                  loading={approvalStatus.deletingIds.has(record.id)}
                 >
                   删除
                 </Button>
@@ -145,7 +131,7 @@ export function getApprovalTableColumns(
                   size="small" 
                   status="success"
                   onClick={() => onApprove(record)}
-                  loading={approvingIds.has(record.id)}
+                  loading={approvalStatus.approvingIds.has(record.id)}
                 >
                   同意
                 </Button>
@@ -154,7 +140,7 @@ export function getApprovalTableColumns(
                   size="small" 
                   status="danger"
                   onClick={() => onReject(record)}
-                  loading={approvingIds.has(record.id)}
+                  loading={approvalStatus.approvingIds.has(record.id)}
                 >
                   拒绝
                 </Button>

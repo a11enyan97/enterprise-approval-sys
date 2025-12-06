@@ -1,7 +1,6 @@
 "use client";
 
 import { Button, Table, Message, Spin } from "@arco-design/web-react";
-import type { TableColumnProps } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +9,8 @@ import ConfirmModal from "@/components/business/ConfirmModal";
 import { submitApprovalAction, approveOrRejectAction, deleteApprovalAction } from "@/actions/approval.action";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem, ApprovalRequestListResponse } from "@/types/approval";
-import { getApprovalTableColumns } from "@/components/business/tableColumnConfig";
+import { getApprovalTableColumns } from "@/components/business/TableColumn";
+import { removeIdFromStatus, addIdToStatus } from "@/utils/approval";
 
 interface ApprovalTableClientProps {
   initialData: ApprovalRequestListResponse;
@@ -28,14 +28,16 @@ export default function ApprovalTableClient({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   
-  // 提交加载状态
-  const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
-  
-  // 审批加载状态
-  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
-  
-  // 删除加载状态
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  // 审核加载状态
+  const [approvalStatus, setApprovalStatus] = useState<{
+    submittingIds: Set<string>;
+    approvingIds: Set<string>;
+    deletingIds: Set<string>;
+  }>({
+    submittingIds: new Set(),
+    approvingIds: new Set(),
+    deletingIds: new Set(),
+  });
   
   // 确认弹窗状态
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -87,7 +89,7 @@ export default function ApprovalTableClient({
   
   // 提交审批 - 显示确认弹窗
   const handleSubmit = (record: ApprovalRequestItem) => {
-    if (submittingIds.has(record.id)) {
+    if (approvalStatus.submittingIds.has(record.id)) {
       return;
     }
     setPendingRecord(record);
@@ -109,7 +111,7 @@ export default function ApprovalTableClient({
     if (!pendingRecord) return;
     
     try {
-      setSubmittingIds((prev) => new Set(prev).add(pendingRecord.id));
+      setApprovalStatus((prev) => addIdToStatus(prev, "submittingIds", pendingRecord.id));
       const result = await submitApprovalAction(pendingRecord.id, {
         currentStatus: "pending",
       });
@@ -126,11 +128,7 @@ export default function ApprovalTableClient({
       const errorMessage = error instanceof Error ? error.message : "提交失败";
       Message.error(errorMessage);
     } finally {
-      setSubmittingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(pendingRecord.id);
-        return newSet;
-      });
+      setApprovalStatus((prev) => removeIdFromStatus(prev, "submittingIds", pendingRecord.id));
     }
   };
   
@@ -169,7 +167,7 @@ export default function ApprovalTableClient({
     }
     
     try {
-      setApprovingIds((prev) => new Set(prev).add(approvalRecord.id));
+      setApprovalStatus((prev) => addIdToStatus(prev, "approvingIds", approvalRecord.id));
       const result = await approveOrRejectAction(
         approvalRecord.id,
         approvalAction,
@@ -189,11 +187,7 @@ export default function ApprovalTableClient({
       const errorMessage = error instanceof Error ? error.message : "审批操作失败";
       Message.error(errorMessage);
     } finally {
-      setApprovingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(approvalRecord.id);
-        return newSet;
-      });
+      setApprovalStatus((prev) => removeIdFromStatus(prev, "approvingIds", approvalRecord.id));
     }
   };
   
@@ -210,7 +204,7 @@ export default function ApprovalTableClient({
     const recordId = deleteRecord.id;
     
     try {
-      setDeletingIds((prev) => new Set(prev).add(recordId));
+      setApprovalStatus((prev) => addIdToStatus(prev, "deletingIds", recordId));
       const result = await deleteApprovalAction(recordId);
       
       if (!result.success) {
@@ -225,11 +219,7 @@ export default function ApprovalTableClient({
       const errorMessage = error instanceof Error ? error.message : "删除失败";
       Message.error(errorMessage);
     } finally {
-      setDeletingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(recordId);
-        return newSet;
-      });
+      setApprovalStatus((prev) => removeIdFromStatus(prev, "deletingIds", recordId));
     }
   };
   
@@ -244,9 +234,7 @@ export default function ApprovalTableClient({
     user,
     isApplicant,
     isApprover,
-    submittingIds,
-    approvingIds,
-    deletingIds,
+    approvalStatus,
     onView: handleView,
     onEdit: handleEdit,
     onSubmit: handleSubmit,
@@ -296,7 +284,7 @@ export default function ApprovalTableClient({
         okText="确认提交"
         cancelText="取消"
         okButtonStatus="default"
-        confirmLoading={pendingRecord ? submittingIds.has(pendingRecord.id) : false}
+        confirmLoading={pendingRecord ? approvalStatus.submittingIds.has(pendingRecord.id) : false}
         onOk={handleConfirmSubmit}
         onCancel={handleCancelSubmit}
       />
@@ -310,7 +298,7 @@ export default function ApprovalTableClient({
         okText="确认删除"
         cancelText="取消"
         okButtonStatus="danger"
-        confirmLoading={deleteRecord ? deletingIds.has(deleteRecord.id) : false}
+        confirmLoading={deleteRecord ? approvalStatus.deletingIds.has(deleteRecord.id) : false}
         onOk={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
@@ -324,7 +312,7 @@ export default function ApprovalTableClient({
         okText={approvalAction === "approve" ? "确认同意" : "确认拒绝"}
         cancelText="取消"
         okButtonStatus={approvalAction === "approve" ? "success" : "danger"}
-        confirmLoading={approvalRecord ? approvingIds.has(approvalRecord.id) : false}
+        confirmLoading={approvalRecord ? approvalStatus.approvingIds.has(approvalRecord.id) : false}
         approvalAction={approvalAction || undefined}
         onOk={handleConfirmApproval}
         onCancel={handleCancelApproval}

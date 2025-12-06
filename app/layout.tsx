@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppLayoutClient from "@/components/common/layout-client";
+import AppLayoutClient from "@/components/common/LayoutClient";
 
 export const metadata: Metadata = {
   title: "企业审批系统",

@@ -10,7 +10,7 @@ import { getOSSTokenAction } from "@/actions/oss.action";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem } from "@/types/approval";
 import type { CascaderOption } from "@/types/departments";
-import ApprovalForm from "./approval-form-client";
+import ApprovalForm from "./ApprovalFormClient";
 
 interface ApprovalDetailClientProps {
   pageType: string;

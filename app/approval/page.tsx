@@ -1,7 +1,7 @@
 import { getApprovalRequestList } from "@/services/approval.service";
 import { getDepartmentCascaderOptions } from "@/services/departments.service";
-import ApprovalFilterClient from "@/components/business/approval/approval-filter-client";
-import ApprovalTableClient from "@/components/business/approval/approval-table-client";
+import ApprovalFilterClient from "@/components/business/approval/ApprovalFilterClient";
+import ApprovalTableClient from "@/components/business/approval/ApprovalTableClient";
 
 import type { GetApprovalListParams } from "@/types/approval";
 

@@ -4,7 +4,8 @@ import { Layout, Menu, Avatar, Dropdown } from "@arco-design/web-react";
 import { IconCaretDown } from "@arco-design/web-react/icon";
 import { useUserStore } from "@/store/userStore";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { USER_ROLE_OPTIONS } from "@/constants/approval";
 
 const { Header, Sider, Content } = Layout;
 
@@ -16,13 +17,13 @@ export default function AppLayoutClient({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isApplicant, switchToApplicant, switchToApprover } = useUserStore();
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
-  // 根据当前路径设置选中的菜单项
-  useEffect(() => {
+  // 根据当前路径计算选中的菜单项
+  const selectedKeys = useMemo(() => {
     if (pathname?.startsWith("/approval")) {
-      setSelectedKeys(["approval"]);
+      return ["approval"];
     }
+    return [];
   }, [pathname]);
 
   // 身份切换处理
@@ -34,15 +35,11 @@ export default function AppLayoutClient({
     }
   };
 
-  // 下拉菜单
-  const roles = [
-    { label: "申请人", value: "applicant" },
-    { label: "审批人", value: "approver" },
-  ];
+
 
   const dropList = (
     <Menu>
-      {roles.map((role) => (
+      {USER_ROLE_OPTIONS.map((role) => (
         <Menu.Item
           key={role.value}
           onClick={() => handleRoleChange(role.value)}

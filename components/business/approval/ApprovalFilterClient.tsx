@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CollapsibleFilter from "@/components/business/CollapsibleFilter";
 import type { CascaderOption } from "@/types/departments";
+import { APPROVAL_STATUS_OPTIONS } from "@/constants/approval";
 
 const FormItem = Form.Item;
 const { Row, Col } = Grid;
@@ -39,14 +40,6 @@ export default function ApprovalFilterClient({
       ? [new Date(approvalTimeStart), new Date(approvalTimeEnd)]
       : undefined,
   };
-
-  // 审批状态选项
-  const approvalStatusOptions = [
-    { label: "草稿", value: "draft" },
-    { label: "待审批", value: "pending" },
-    { label: "已通过", value: "approved" },
-    { label: "已拒绝", value: "rejected" },
-  ];
 
   // 查询处理 - 使用 URL 搜索参数
   const handleQuery = useCallback(() => {
@@ -147,7 +140,7 @@ export default function ApprovalFilterClient({
             <Col span={6}>
               <FormItem label="审批状态" field="approvalStatus">
                 <Select placeholder="请选择审批状态" allowClear>
-                  {approvalStatusOptions.map((option) => (
+                  {APPROVAL_STATUS_OPTIONS.map((option) => (
                     <Select.Option key={option.value} value={option.value}>
                       {option.label}
                     </Select.Option>
