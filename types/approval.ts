@@ -21,6 +21,15 @@ export enum UserRole {
 }
 
 /**
+ * 页面类型枚举
+ */
+export enum PageTypeEnum {
+  add = '审核新增页',
+  details = '审核详情页',
+  edit = '审核编辑页',
+}
+
+/**
  * 审批附件项
  */
 export interface ApprovalAttachmentItem {

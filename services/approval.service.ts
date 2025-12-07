@@ -204,15 +204,6 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
         where.deptLevel1Id = deptPathInfo.deptLevel1Id;
       }
     }
-  } else {
-    // 向后兼容：如果没有提供 deptId，则使用旧的层级ID方式
-    if (options?.deptLevel3Id) {
-      where.deptLevel3Id = options.deptLevel3Id;
-    } else if (options?.deptLevel2Id) {
-      where.deptLevel2Id = options.deptLevel2Id;
-    } else if (options?.deptLevel1Id) {
-      where.deptLevel1Id = options.deptLevel1Id;
-    }
   }
 
   const [data, total] = await Promise.all([

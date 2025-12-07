@@ -25,9 +25,21 @@ export const APPROVAL_STATUS_MAP: Record<string, string> = {
 } as const;
 
 /**
- * 
+ * 用户角色选项配置
  */
 export const USER_ROLE_OPTIONS = [
   { label: "申请人", value: UserRole.APPLICANT },
   { label: "审批人", value: UserRole.APPROVER },
 ] as const;
+
+/**
+ * 表单项布局配置
+ */
+export const FORM_ITEM_LAYOUT = {
+  labelCol: {
+    span: 2,
+  },
+  wrapperCol: {
+    span: 8,
+  },
+} as const; 

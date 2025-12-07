@@ -37,7 +37,7 @@ export async function generateOSSSignature(
 
   // 2. 初始化 OSS 客户端
   const client = new OSS({
-    region: requiredEnvVars.OSS_REGION!,
+    region: `oss-${requiredEnvVars.OSS_REGION!}`,
     accessKeyId: requiredEnvVars.OSS_ACCESS_KEY_ID!,
     accessKeySecret: requiredEnvVars.OSS_ACCESS_KEY_SECRET!,
     bucket: requiredEnvVars.OSS_BUCKET!,
