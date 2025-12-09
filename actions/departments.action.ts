@@ -4,7 +4,7 @@ import {
   getAllDepartments,
   getDepartmentCascaderOptions,
 } from "@/services/departments.service";
-import { handleApiError } from "@/services/_shared/errors";
+import { handleActionError } from "@/services/_shared/errors";
 
 /**
  * 获取部门列表
@@ -28,7 +28,7 @@ export async function getDepartmentsAction(format: "cascader" | "list" = "cascad
       };
     }
   } catch (error) {
-    const errorResponse = handleApiError(error, "获取部门列表失败");
+    const errorResponse = handleActionError(error, "获取部门列表失败");
     return {
       success: false,
       ...errorResponse,

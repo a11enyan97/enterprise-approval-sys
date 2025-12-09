@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * 客户端 OSS 直传工具
  */
@@ -29,61 +31,26 @@ export async function uploadToOSS(file: File): Promise<OSSUploadResult> {
 
   const { uploadUrl, publicUrl, filename } = tokenResult;
 
-  // 2. 使用预签名URL直接上传到OSS（客户端直传，不经过服务器）
+  // 2. 使用预签名URL直接上传到OSS（客户端直传，不经过服务器）   
   try {
-    // 创建 AbortController 用于超时控制（5分钟超时）
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
-    
-    try {
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type || 'application/octet-stream',
-        },
-        signal: controller.signal,
-      });
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type || 'application/octet-stream',
+      },
+    });
 
-      clearTimeout(timeoutId);
-
-      if (!uploadResponse.ok) {
-        throw new Error(`文件上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      }
-
-      return {
-        uploadUrl,
-        publicUrl,
-        filename,
-      };
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      // 处理上传错误
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        throw new Error(`文件 "${file.name}" 上传超时，请检查网络连接或文件大小后重试`);
-      }
-      
-      if (fetchError instanceof TypeError) {
-        if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('network')) {
-          throw new Error(`文件 "${file.name}" 上传失败：网络连接错误，请检查网络连接后重试`);
-        }
-        if (fetchError.message.includes('aborted')) {
-          throw new Error(`文件 "${file.name}" 上传被中断，请重试`);
-        }
-      }
-      
-      throw fetchError;
+    if (!uploadResponse.ok) {
+      throw new Error(`文件上传失败: ${uploadResponse.status} ${uploadResponse.statusText}`);
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      // 如果错误信息已经包含文件名和详细说明，直接抛出
-      if (error.message.includes(file.name) && (error.message.includes('上传失败') || error.message.includes('上传超时') || error.message.includes('上传被中断'))) {
-        throw error;
-      }
-      throw new Error(`文件 "${file.name}" 上传失败：${error.message}`);
-    }
-    throw new Error(`文件 "${file.name}" 上传失败：未知错误`);
+    return {
+      uploadUrl,
+      publicUrl,
+      filename,
+    };
+  } catch (fetchError) {
+    throw new Error(`文件上传失败: ${fetchError}`);
   }
 }
 

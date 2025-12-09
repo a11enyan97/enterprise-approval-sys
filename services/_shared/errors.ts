@@ -3,7 +3,7 @@ import { ValidationError } from "./validators";
 /**
  * 统一错误响应格式
  */
-export interface ApiErrorResponse {
+export interface ActionErrorResponse {
   error: string;
   code?: string;
   field?: string;
@@ -16,10 +16,10 @@ export interface ApiErrorResponse {
  * @param defaultMessage 默认错误消息
  * @returns 错误响应对象
  */
-export function handleApiError(
+export function handleActionError(
   error: unknown,
   defaultMessage: string = "操作失败"
-): ApiErrorResponse {
+): ActionErrorResponse {
   // 处理验证错误
   if (error instanceof ValidationError) {
     return {

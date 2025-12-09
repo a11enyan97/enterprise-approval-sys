@@ -36,7 +36,7 @@ export function formatAttachmentsForForm(
 }
 
 /**
- * 将已存在的附件（有 url 但没有 originFile）转换为 AttachmentInput
+ * 将已存在的附件转换为 AttachmentInput
  * @param fileList 文件列表
  * @param attachmentType 附件类型
  * @param approvalDetail 审批详情，用于查找原始附件信息

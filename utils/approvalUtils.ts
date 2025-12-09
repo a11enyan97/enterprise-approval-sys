@@ -2,6 +2,7 @@
  * 审批相关工具函数
  */
 
+import { Message } from "@arco-design/web-react";
 import type { ApprovalStatus } from "@/types/approval";
 import { APPROVAL_STATUS_MAP } from "@/constants/approval";
 
@@ -56,3 +57,36 @@ export function addIdToStatus(
 ): ApprovalStatusIds {
   return { ...prev, [key]: new Set(prev[key]).add(id) };
 }
+
+/**
+ * 安全调用消息提示，优先使用实例，缺失时回退全局
+ * 使用 id 保证相同内容的消息只出现一次
+ */
+export const showErrorMessage = (
+  messageInstance: { error?: (options: { id?: string; content: string }) => void } | null,
+  msg: string
+) => {
+  const options = { id: `error:${msg}`, content: msg };
+  if (messageInstance?.error) {
+    messageInstance.error(options);
+  } else {
+    Message.error(options);
+  }
+};
+
+/**
+ * 安全调用成功消息提示，优先使用实例，缺失时回退全局
+ * 使用 id 保证相同内容的消息只出现一次
+ */
+export const showSuccessMessage = (
+  messageInstance: { success?: (options: { id?: string; content: string; onClose?: () => void }) => void } | null,
+  content: string,
+  onClose?: () => void
+) => {
+  const options = { id: `success:${content}`, content, onClose };
+  if (messageInstance?.success) {
+    messageInstance.success(options);
+  } else {
+    Message.success(options);
+  }
+};

@@ -5,8 +5,8 @@
 import { Button } from "@arco-design/web-react";
 import type { TableColumnProps } from "@arco-design/web-react";
 import type { ApprovalRequestItem, ApprovalStatus } from "@/types/approval";
-import { formatDateTime } from "@/utils/format";
-import { getStatusLabel } from "@/utils/approval";
+import { formatDateTime } from "@/utils/formatUtils";
+import { getStatusLabel } from "@/utils/approvalUtils";
 
 /**
  * 审批表格列配置参数

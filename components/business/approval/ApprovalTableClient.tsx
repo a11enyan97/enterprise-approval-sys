@@ -10,7 +10,7 @@ import { submitApprovalAction, approveOrRejectAction, deleteApprovalAction } fro
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem, ApprovalRequestListResponse } from "@/types/approval";
 import { getApprovalTableColumns } from "@/components/business/TableColumn";
-import { removeIdFromStatus, addIdToStatus } from "@/utils/approval";
+import { removeIdFromStatus, addIdToStatus } from "@/utils/approvalUtils";
 
 interface ApprovalTableClientProps {
   initialData: ApprovalRequestListResponse;
