@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createApprovalAction, submitApprovalAction, getApprovalFormSchemaAction } from "@/actions/approval.action";
 import { deleteOSSFiles } from "@/actions/oss.action";
 import { uploadToOSS } from "@/utils/fileUploadUtil";
+import { compressImage } from "@/utils/imageCompressor";
 import { validateExcelFile } from "@/utils/excelValidator";
 import { formatAttachmentsForForm, convertExistingAttachmentsToInput } from "@/utils/formatUtils";
 import { showErrorMessage, showSuccessMessage } from "@/utils/approvalUtils";
@@ -280,15 +281,21 @@ export default function ApprovalDetailClient({
       );
     }
     const uploadResults = await Promise.allSettled(
-      filesToUpload.map(async (file, index) => {
+      filesToUpload.map(async (file) => {
         try {
-          const result = await uploadFileToOSS(file.originFile);
+          // 图片上传前压缩，保证 1MB 内且最长边 1920
+          const uploadFile =
+            attachmentType === "image"
+              ? await compressImage(file.originFile)
+              : file.originFile;
+
+          const result = await uploadFileToOSS(uploadFile);
           return {
             filePath: result.url,
-            fileName: file.name || file.originFile.name,
+            fileName: file.name || uploadFile.name || file.originFile.name,
             attachmentType,
-            fileSize: file.originFile.size || 0,
-            mimeType: file.originFile.type || null,
+            fileSize: uploadFile.size || 0,
+            mimeType: uploadFile.type || file.originFile.type || null,
           };
         } catch (uploadError) {
           throw uploadError;

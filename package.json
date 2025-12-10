@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -15,6 +16,7 @@
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "ali-oss": "^6.23.0",
+    "browser-image-compression": "^2.0.2",
     "dayjs": "^1.11.19",
     "dotenv": "^17.2.3",
     "iconv-lite": "^0.7.0",
