@@ -9,7 +9,7 @@ import { createApprovalAction, submitApprovalAction, getApprovalFormSchemaAction
 import { deleteOSSFiles } from "@/actions/oss.action";
 import { uploadToOSS } from "@/utils/fileUploadUtil";
 import { compressImage } from "@/utils/imageCompressor";
-import { validateExcelFile, validateExcelFileSize } from "@/utils/excelValidator";
+import { validateExcelFile } from "@/utils/excelValidator";
 import { formatAttachmentsForForm, convertExistingAttachmentsToInput } from "@/utils/formatUtils";
 import { showErrorMessage, showSuccessMessage } from "@/utils/approvalUtils";
 import { useUserStore } from "@/store/userStore";
@@ -164,9 +164,6 @@ export default function ApprovalDetailClient({
       } else if (requestId) {
         result = await submitApprovalAction(requestId, requestData);
       }
-      if (!result) {
-        throw new Error("保存失败");
-      }
       if (!result?.success) {
         throw new Error("error" in result ? result.error : "保存失败");
       }
@@ -184,22 +181,28 @@ export default function ApprovalDetailClient({
 
   // 自定义上传函数：不立即上传，只保存文件到本地，等待用户点击保存时统一上传
   const customRequest = async (option: any) => {
-    const { onSuccess, onError, file } = option;
+    const { onSuccess, file } = option;
     
       // 图片格式验证
       if (file.type && file.type.startsWith('image/')) {
         const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedImageTypes.includes(file.type)) {
-          const error = new Error('不支持的图片格式，仅支持 JPG、PNG、GIF、WebP');
-          showErrorMessage(message, error.message);
-          onError?.(error);
-          return;
+          const errorMessage = `不支持的图片格式：${file.name}，仅支持 JPG、PNG、GIF、WebP`;
+          showErrorMessage(message, errorMessage);
+          throw new Error(errorMessage);
         }
       }
     
       // Excel 文件大小验证
       if (file.type && (file.type.includes('spreadsheetml') || file.type.includes('ms-excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-        validateExcelFileSize(file);
+        const maxSizeBytes = 10 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+          const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+          const maxSizeMB = (maxSizeBytes / 1024 / 1024).toFixed(0);
+          const errorMessage = `文件大小超过限制：${file.name}（${fileSizeMB}MB），最大支持 ${maxSizeMB}MB`;
+          showErrorMessage(message, errorMessage);
+          throw new Error(errorMessage);
+        }
       }
       
       onSuccess({
@@ -207,25 +210,6 @@ export default function ApprovalDetailClient({
         // 不设置 url，表示这是待上传的文件
         originFile: file,
       });
-  };
-
-  // 上传单个文件到 OSS
-  // 上传策略：使用预签名URL直传，文件直接从客户端上传到OSS
-  const uploadFileToOSS = async (file: File): Promise<{ url: string; filename: string }> => {
-    const result = await uploadToOSS(file);
-    return {
-      url: result.publicUrl,
-      filename: result.filename,
-    };
-  };
-
-  // 验证图片格式
-  const validateImageFile = (file: File): void => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      showErrorMessage(message, `不支持的图片格式：${file.name}，仅支持 JPG、PNG、GIF、WebP`);
-      throw new Error(`不支持的图片格式：${file.name}，仅支持 JPG、PNG、GIF、WebP`);
-    }
   };
 
   // 上传所有待上传的附件
@@ -236,20 +220,7 @@ export default function ApprovalDetailClient({
       return shouldUpload;
     });
     
-    // 图片格式验证
-    if (attachmentType === 'image') {
-      filesToUpload.forEach((file) => {
-        validateImageFile(file.originFile);
-      });
-    }
-    
-    // Excel 格式和大小验证
     if (attachmentType === 'table') {
-      // 先验证文件大小
-      filesToUpload.forEach((file) => {
-        validateExcelFileSize(file.originFile);
-      });
-      // 再验证文件格式和内容
       await Promise.all(
         filesToUpload.map((file) => {
           return validateExcelFile(file.originFile);
@@ -264,9 +235,9 @@ export default function ApprovalDetailClient({
             ? await compressImage(file.originFile)
             : file.originFile;
 
-        const result = await uploadFileToOSS(uploadFile);
+        const result = await uploadToOSS(uploadFile);;
         return {
-          filePath: result.url,
+          filePath: result.publicUrl,
           fileName: uploadFile.name || file.originFile.name,
           attachmentType,
           fileSize: uploadFile.size || 0,

@@ -29,15 +29,15 @@ export default function ApprovalTableClient({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // 审核加载状态
+  // 审批状态管理：用于管理正在执行的操作的审批请求ID集合，用于防止重复操作并显示加载状态
   const [approvalStatus, setApprovalStatus] = useState<{
-    submittingIds: Set<string>;
-    approvingIds: Set<string>;
-    deletingIds: Set<string>;
+    submittingIds: Set<string>; // 正在执行提交操作的审批请求ID集合（将状态从 draft 草稿 提交为 pending 待审批）
+    approvingIds: Set<string>; // 正在执行审批操作的审批请求ID集合（将状态从 pending 待审批 变为 approved 已通过 或 rejected 已拒绝）
+    deletingIds: Set<string>; // 正在执行删除操作的审批请求ID集合，用于防止重复删除并显示加载状态
   }>({
-    submittingIds: new Set(),
-    approvingIds: new Set(),
-    deletingIds: new Set(),
+    submittingIds: new Set(), 
+    approvingIds: new Set(), 
+    deletingIds: new Set(), 
   });
 
   // 弹窗状态管理：统一描述当前弹窗类型与目标数据
@@ -73,12 +73,10 @@ export default function ApprovalTableClient({
   const handleCreate = () => {
     router.push('/approval/info/add');
   };
-
   // 查看审批
   const handleView = (record: ApprovalRequestItem) => {
     router.push(`/approval/info/details?id=${record.id}`);
   };
-
   // 修改审批
   const handleEdit = (record: ApprovalRequestItem) => {
     router.push(`/approval/info/edit?id=${record.id}`);
@@ -91,16 +89,6 @@ export default function ApprovalTableClient({
     }
     setActiveModal({ type: ACTION_TYPES.SUBMIT, record });
   };
-
-  // 删除审批 - 显示确认弹窗
-  const handleDelete = (record: ApprovalRequestItem) => {
-    if (!user) {
-      Message.error("请先登录");
-      return;
-    }
-    setActiveModal({ type: ACTION_TYPES.DELETE, record });
-  };
-
   // 确认提交
   const handleConfirmSubmit = async () => {
     if (activeModal.type !== ACTION_TYPES.SUBMIT || !activeModal.record) return;
@@ -127,12 +115,8 @@ export default function ApprovalTableClient({
     }
   };
 
-  // 关闭弹窗
-  const handleCancelModal = () => {
-    setActiveModal({ type: null, record: null });
-  };
 
-  // 审批处理（同意）
+  // 审批处理（同意）- 显示确认弹窗
   const handleApprove = (record: ApprovalRequestItem) => {
     if (!user) {
       Message.error("请先登录");
@@ -141,7 +125,7 @@ export default function ApprovalTableClient({
     setActiveModal({ type: ACTION_TYPES.APPROVE, record });
   };
 
-  // 审批处理（拒绝）
+  // 审批处理（拒绝）- 显示确认弹窗
   const handleReject = (record: ApprovalRequestItem) => {
     if (!user) {
       Message.error("请先登录");
@@ -185,6 +169,14 @@ export default function ApprovalTableClient({
     }
   };
 
+  // 删除审批 - 显示确认弹窗
+  const handleDelete = (record: ApprovalRequestItem) => {
+    if (!user) {
+      Message.error("请先登录");
+      return;
+    }
+    setActiveModal({ type: ACTION_TYPES.DELETE, record });
+  };
   // 确认删除
   const handleConfirmDelete = async () => {
     if (activeModal.type !== ACTION_TYPES.DELETE || !activeModal.record) return;
@@ -208,6 +200,12 @@ export default function ApprovalTableClient({
       setApprovalStatus((prev) => removeIdFromStatus(prev, "deletingIds", recordId));
     }
   };
+
+  // 关闭弹窗
+  const handleCancelModal = () => {
+    setActiveModal({ type: null, record: null });
+  };
+
   const modalConfigMap = getModalConfigMap({
     approvalStatus,
     handleConfirmSubmit,

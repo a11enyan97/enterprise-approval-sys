@@ -21,7 +21,6 @@ export default function ApprovalFilterClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form] = Form.useForm();
-  const [deptLoading, setDeptLoading] = useState(false);
 
   // 从 URL 获取筛选参数作为初始值
   const createTimeStart = searchParams.get("createTimeStart");
@@ -30,9 +29,9 @@ export default function ApprovalFilterClient({
   const approvalTimeEnd = searchParams.get("approvalTimeEnd");
 
   const initialValues = {
-    status: searchParams.get("status") || undefined,
-    deptId: searchParams.get("deptId") || undefined,
-    projectName: searchParams.get("projectName") || undefined,
+    approvalStatus: searchParams.get("status") || undefined,
+    applicationDepartment: searchParams.get("deptId") || undefined,
+    approvalProject: searchParams.get("projectName") || undefined,
     createTimeRange: createTimeStart && createTimeEnd
       ? [new Date(createTimeStart), new Date(createTimeEnd)]
       : undefined,
@@ -128,13 +127,7 @@ export default function ApprovalFilterClient({
           form={form}
           layout="vertical"
           style={{ marginTop: "16px" }}
-          initialValues={{
-            approvalStatus: initialValues.status,
-            approvalProject: initialValues.projectName,
-            applicationDepartment: initialValues.deptId,
-            createTimeRange: initialValues.createTimeRange,
-            approvalTimeRange: initialValues.approvalTimeRange,
-          }}
+          initialValues={{...initialValues}}
         >
           <Row gutter={16}>
             <Col span={6}>
@@ -180,7 +173,6 @@ export default function ApprovalFilterClient({
                   placeholder="请选择部门"
                   allowClear
                   style={{ width: "100%" }}
-                  loading={deptLoading}
                   fieldNames={{
                     title: "title",
                     key: "key",
