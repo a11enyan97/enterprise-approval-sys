@@ -4,7 +4,7 @@
 
 import { Message } from "@arco-design/web-react";
 import type { ApprovalStatus } from "@/types/approval";
-import { APPROVAL_STATUS_MAP } from "@/constants/approval";
+import { APPROVAL_STATUS_MAP } from "@/constants/approvalConfig";
 
 /**
  * 获取审批状态的中文标签

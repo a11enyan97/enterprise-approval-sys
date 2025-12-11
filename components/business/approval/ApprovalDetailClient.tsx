@@ -9,7 +9,7 @@ import { createApprovalAction, submitApprovalAction, getApprovalFormSchemaAction
 import { deleteOSSFiles } from "@/actions/oss.action";
 import { uploadToOSS } from "@/utils/fileUploadUtil";
 import { compressImage } from "@/utils/imageCompressor";
-import { validateExcelFile } from "@/utils/excelValidator";
+import { validateExcelFile, validateExcelFileSize } from "@/utils/excelValidator";
 import { formatAttachmentsForForm, convertExistingAttachmentsToInput } from "@/utils/formatUtils";
 import { showErrorMessage, showSuccessMessage } from "@/utils/approvalUtils";
 import { useUserStore } from "@/store/userStore";
@@ -39,18 +39,9 @@ export default function ApprovalDetailClient({
   const { user } = useUserStore();
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
   const [schemaLoading, setSchemaLoading] = useState<boolean>(false);
-  const schemaFetchedRef = useRef(false); // 防止重复请求
-
-  // 判断是否为只读模式（详情页）
   const isReadOnly = pageType === 'details';
 
   useEffect(() => {
-    // 防止 React Strict Mode 导致的重复请求
-    if (schemaFetchedRef.current) {
-      return;
-    }
-    schemaFetchedRef.current = true;
-
     const fetchSchema = async () => {
       setSchemaLoading(true);
       try {
@@ -67,14 +58,13 @@ export default function ApprovalDetailClient({
       }
     };
     fetchSchema();
-  }, []); // 空依赖数组：只在组件挂载时执行一次
+  }, []);
 
   // 处理审批详情数据变化，设置表单值
   useEffect(() => {
     if (approvalDetail) {
       const imageAttachments = formatAttachmentsForForm(approvalDetail.attachments, "image");
       const tableAttachments = formatAttachmentsForForm(approvalDetail.attachments, "table");
-
       const deptId = (approvalDetail.deptLevel3Id || approvalDetail.deptLevel2Id || approvalDetail.deptLevel1Id)?.toString();
 
       form.setFieldsValue({
@@ -103,18 +93,13 @@ export default function ApprovalDetailClient({
       // 2. 先上传所有待上传的附件
       const imageFileList = values.imageAttachments || [];
       const tableFileList = values.tableAttachments || [];
-
-      let imageAttachments: AttachmentInput[] = [];
-      let tableAttachments: AttachmentInput[] = [];
-
-      const uploadResults = await Promise.allSettled([
+      const [imageResult, tableResult] = await Promise.allSettled([
         uploadAllAttachments(imageFileList, 'image'),
         uploadAllAttachments(tableFileList, 'table'),
       ]);
 
-      // 处理上传结果
-      const imageResult = uploadResults[0];
-      const tableResult = uploadResults[1];
+      let imageAttachments: AttachmentInput[] = [];
+      let tableAttachments: AttachmentInput[] = [];
       if (imageResult.status === 'fulfilled') {
         imageAttachments = imageResult.value;
       }
@@ -125,7 +110,6 @@ export default function ApprovalDetailClient({
       // 检查是否有失败
       const hasFailure = imageResult.status === 'rejected' || tableResult.status === 'rejected';
       if (hasFailure) {
-        // 收集所有已成功上传的文件
         const allUploadedFiles: AttachmentInput[] = [
           ...imageAttachments,
           ...tableAttachments,
@@ -154,7 +138,7 @@ export default function ApprovalDetailClient({
         throw new Error(msg);
       }
 
-      // 3. 合并所有附件（包括新上传的和已存在的）
+      // 3. 如果全部上传成功,则合并所有附件（包括新上传的和已存在的）
       const allAttachments = [
         ...imageAttachments,  // 新上传的图片
         ...tableAttachments,  // 新上传的表格
@@ -180,7 +164,10 @@ export default function ApprovalDetailClient({
       } else if (requestId) {
         result = await submitApprovalAction(requestId, requestData);
       }
-      if (!result.success) {
+      if (!result) {
+        throw new Error("保存失败");
+      }
+      if (!result?.success) {
         throw new Error("error" in result ? result.error : "保存失败");
       }
       showSuccessMessage(message, "保存成功", () => {
@@ -241,17 +228,6 @@ export default function ApprovalDetailClient({
     }
   };
 
-  // 验证 Excel 文件大小
-  const validateExcelFileSize = (file: File): void => {
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
-      showErrorMessage(message, `文件大小超过限制：${file.name}（${fileSizeMB}MB），最大支持 ${maxSizeMB}MB`);
-      throw new Error(`文件大小超过限制：${file.name}（${fileSizeMB}MB），最大支持 ${maxSizeMB}MB`);
-    }
-  };
-
   // 上传所有待上传的附件
   const uploadAllAttachments = async (fileList: any[], attachmentType: 'image' | 'table')
     : Promise<Array<AttachmentInput>> => {
@@ -282,24 +258,20 @@ export default function ApprovalDetailClient({
     }
     const uploadResults = await Promise.allSettled(
       filesToUpload.map(async (file) => {
-        try {
-          // 图片上传前压缩，保证 1MB 内且最长边 1920
-          const uploadFile =
-            attachmentType === "image"
-              ? await compressImage(file.originFile)
-              : file.originFile;
+        // 图片上传前压缩，保证 1MB 内且最长边 1920
+        const uploadFile =
+          attachmentType === "image"
+            ? await compressImage(file.originFile)
+            : file.originFile;
 
-          const result = await uploadFileToOSS(uploadFile);
-          return {
-            filePath: result.url,
-            fileName: file.name || uploadFile.name || file.originFile.name,
-            attachmentType,
-            fileSize: uploadFile.size || 0,
-            mimeType: uploadFile.type || file.originFile.type || null,
-          };
-        } catch (uploadError) {
-          throw uploadError;
-        }
+        const result = await uploadFileToOSS(uploadFile);
+        return {
+          filePath: result.url,
+          fileName: uploadFile.name || file.originFile.name,
+          attachmentType,
+          fileSize: uploadFile.size || 0,
+          mimeType: uploadFile.type || file.originFile.type || null,
+        };
       })
     );
     const successfulResults: AttachmentInput[] = [];

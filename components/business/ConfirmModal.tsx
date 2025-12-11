@@ -23,7 +23,7 @@ interface ConfirmModalProps {
     onCancel: () => void;
     /** 自定义内容（如果不提供，将使用默认格式） */
     content?: React.ReactNode;
-    /** 内容模板类型（submit/delete/approve） */
+    /** 弹窗类型（submit/delete/approve） */
     type?: "submit" | "delete" | "approve";
     /** 审批操作类型（仅在 type 为 approve 时使用） */
     approvalAction?: "approve" | "reject";

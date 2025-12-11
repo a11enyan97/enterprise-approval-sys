@@ -5,7 +5,7 @@ import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CollapsibleFilter from "@/components/business/CollapsibleFilter";
 import type { CascaderOption } from "@/types/departments";
-import { APPROVAL_STATUS_OPTIONS } from "@/constants/approval";
+import { APPROVAL_STATUS_OPTIONS } from "@/constants/approvalConfig";
 
 const FormItem = Form.Item;
 const { Row, Col } = Grid;

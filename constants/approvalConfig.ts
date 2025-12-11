@@ -42,4 +42,4 @@ export const FORM_ITEM_LAYOUT = {
   wrapperCol: {
     span: 8,
   },
-} as const; 
+} as const;

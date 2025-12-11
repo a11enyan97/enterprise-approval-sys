@@ -1,6 +1,6 @@
 import { ValidationError } from "./_shared/validators";
 import type { FormSchema } from "@/types/form";
-import { approvalCreateSchema } from "@/constants/form-schemas";
+import { approvalCreateSchema } from "@/constants/formSchemaConfig";
 
 const formSchemas: Record<string, FormSchema> = {
   [approvalCreateSchema.key]: approvalCreateSchema,

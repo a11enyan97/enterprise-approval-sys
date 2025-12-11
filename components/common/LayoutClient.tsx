@@ -5,7 +5,7 @@ import { IconCaretDown } from "@arco-design/web-react/icon";
 import { useUserStore } from "@/store/userStore";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { USER_ROLE_OPTIONS } from "@/constants/approval";
+import { USER_ROLE_OPTIONS } from "@/constants/approvalConfig";
 
 const { Header, Sider, Content } = Layout;
 
