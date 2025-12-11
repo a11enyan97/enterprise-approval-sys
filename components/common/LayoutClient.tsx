@@ -22,6 +22,8 @@ export default function AppLayoutClient({
   const selectedKeys = useMemo(() => {
     if (pathname?.startsWith("/approval")) {
       return ["approval"];
+    } else if (pathname?.startsWith("/formBuilder")) {
+      return ["formBuilder"];
     }
     return [];
   }, [pathname]);
@@ -58,6 +60,8 @@ export default function AppLayoutClient({
   const handleMenuClick = (key: string) => {
     if (key === "approval") {
       router.push("/approval");
+    } else if (key === "formBuilder") {
+      router.push("/formBuilder");
     }
   };
 
@@ -120,6 +124,7 @@ export default function AppLayoutClient({
             style={{ border: "none", height: "100%" }}
           >
             <Menu.Item key="approval">审批</Menu.Item>
+            <Menu.Item key="formBuilder">表单配置</Menu.Item>
           </Menu>
         </Sider>
         <Content

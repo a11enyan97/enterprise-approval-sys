@@ -3,7 +3,7 @@
 import { Form, Input, Select, TreeSelect, DatePicker, Button, Grid } from "@arco-design/web-react";
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import CollapsibleFilter from "@/components/business/CollapsibleFilter";
+import CollapsibleFilter from "@/components/common/CollapsibleFilter";
 import type { CascaderOption } from "@/types/departments";
 import { APPROVAL_STATUS_OPTIONS } from "@/constants/approvalConfig";
 
