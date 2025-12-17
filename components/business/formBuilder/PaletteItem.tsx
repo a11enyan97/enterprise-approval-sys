@@ -1,10 +1,15 @@
 "use client";
 
+/** 
+ * 基础组件配置列表（类型/标题/描述），供左侧面板和 DragOverlay 使用
+ */
+
 import { Tag } from "@arco-design/web-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { FieldType } from "@/types/formBuilder";
 
+// 基础组件配置列表（类型/标题/描述），供左侧面板和 DragOverlay 使用
 export const paletteItems: Array<{ type: FieldType; title: string; desc: string }> = [
   { type: "input", title: "单行输入", desc: "文本输入框" },
   { type: "textarea", title: "多行文本", desc: "支持自动换行" },
@@ -21,6 +26,7 @@ interface PaletteItemProps {
 }
 
 export default function PaletteItem({ type, title, desc }: PaletteItemProps) {
+  // useDraggable：为基础组件绑定拖拽行为，data 中标记来源与类型
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${type}`,
     data: { source: "palette", fieldType: type },

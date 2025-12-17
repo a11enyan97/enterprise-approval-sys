@@ -1,5 +1,9 @@
 "use client";
 
+/** 
+ * 属性面板：显示字段属性配置表单
+ */
+
 import { useEffect, useRef } from "react";
 import { Card, Form, Input, InputNumber, Switch } from "@arco-design/web-react";
 import type { FormField } from "@/types/formBuilder";
@@ -17,8 +21,10 @@ interface PropertyPanelProps {
 
 export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
   const [form] = Form.useForm();
+  // syncingRef 用于避免 setFieldsValue 触发 onValuesChange 导致循环
   const syncingRef = useRef(false);
 
+  // 当选中字段变化时，把字段值同步到表单；未选中则重置
   useEffect(() => {
     if (field) {
       syncingRef.current = true;
@@ -40,6 +46,7 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
     }
   }, [field, form]);
 
+  // 表单变更回调：组装 patch，交由上层状态更新
   const handleChange = (_: any, values: any) => {
     if (syncingRef.current) return;
     if (!field) return;
@@ -75,6 +82,7 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
     onChange(patch);
   };
 
+  // 未选中字段时的占位渲染
   if (!field) {
     return (
       <Card size="small" title="属性配置">
@@ -83,6 +91,7 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
     );
   }
 
+  // 已选中字段时的配置表单
   return (
     <Card size="small" title="属性配置">
       <Form form={form} layout="vertical" onValuesChange={handleChange}>

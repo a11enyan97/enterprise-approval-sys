@@ -35,7 +35,7 @@ export function renderFormField({
           <Input
             placeholder={field.placeholder}
             disabled={isReadOnly}
-            {...(field.componentProps || {})}
+            {...(field.props || {})}
           />
         </Form.Item>
       );
@@ -45,7 +45,7 @@ export function renderFormField({
           <Input.TextArea
             placeholder={field.placeholder}
             disabled={isReadOnly}
-            {...(field.componentProps || {})}
+            {...(field.props || {})}
           />
         </Form.Item>
       );
@@ -56,7 +56,7 @@ export function renderFormField({
             placeholder={field.placeholder}
             disabled={isReadOnly}
             style={{ width: '100%' }}
-            {...(field.componentProps || {})}
+            {...(field.props || {})}
           />
         </Form.Item>
       );
@@ -75,7 +75,7 @@ export function renderFormField({
               key: "key",
               children: "children",
             }}
-            {...(field.componentProps || {})}
+            {...(field.props || {})}
           />
         </Form.Item>
       );
@@ -98,8 +98,8 @@ export function renderFormField({
             listType="picture-card"
             customRequest={customRequest}
             disabled={isReadOnly}
-            accept={field.componentProps?.accept || "image/jpeg,image/jpg,image/png,image/gif,image/webp"}
-            {...(field.componentProps || {})}
+            accept={field.props?.accept || "image/jpeg,image/jpg,image/png,image/gif,image/webp"}
+            {...(field.props || {})}
           />
         </Form.Item>
       );
@@ -128,7 +128,7 @@ export function renderFormField({
             customRequest={customRequest}
             accept='.xlsx,.xls'
             disabled={isReadOnly}
-            {...(field.componentProps || {})}
+            {...(field.props || {})}
           />
         </Form.Item>
       );

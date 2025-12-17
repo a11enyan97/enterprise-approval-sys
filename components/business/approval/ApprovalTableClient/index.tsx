@@ -5,11 +5,11 @@ import { IconPlus } from "@arco-design/web-react/icon";
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePathname } from "next/navigation";
-import ConfirmModal from "@/components/business/approval/ConfirmModal";
+import ConfirmModal from "@/components/business/approval/ApprovalTableClient/ConfirmModal";
 import { submitApprovalAction, approveOrRejectAction, deleteApprovalAction } from "@/actions/approval.action";
 import { useUserStore } from "@/store/userStore";
 import type { ApprovalRequestItem, ApprovalRequestListResponse } from "@/types/approval";
-import { getApprovalTableColumns } from "@/components/business/approval/TableColumn";
+import { getApprovalTableColumns } from "@/components/business/approval/ApprovalTableClient/TableColumn";
 import { removeIdFromStatus, addIdToStatus } from "@/utils/approvalUtils";
 import { ACTION_TYPES, getModalConfigMap, type ModalType } from "@/constants/modalConfig";
 

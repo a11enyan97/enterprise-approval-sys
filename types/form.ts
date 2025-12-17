@@ -13,7 +13,7 @@ export interface FormFieldConfig {
   required?: boolean;
   placeholder?: string;
   rules?: Array<{ required?: boolean; message?: string; maxLength?: number }>;
-  componentProps?: Record<string, any>;
+  props?: Record<string, any>;
 }
 
 export interface FormLayoutConfig {

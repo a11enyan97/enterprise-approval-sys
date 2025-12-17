@@ -5,11 +5,9 @@ import { IconArrowLeft } from "@arco-design/web-react/icon";
 import { useState, useEffect, useRef } from "react";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import { createApprovalAction, submitApprovalAction, getApprovalFormSchemaAction } from "@/actions/approval.action";
+import { createApprovalAction, submitApprovalAction } from "@/actions/approval.action";
 import { deleteOSSFiles } from "@/actions/oss.action";
-import { uploadToOSS } from "@/utils/fileUploadUtil";
-import { compressImage } from "@/utils/imageCompressor";
-import { validateExcelFile } from "@/utils/excelValidator";
+import { uploadAllAttachments } from "@/utils/attachmentUploader";
 import { formatAttachmentsForForm, convertExistingAttachmentsToInput } from "@/utils/formatUtils";
 import { showErrorMessage, showSuccessMessage } from "@/utils/approvalUtils";
 import { useUserStore } from "@/store/userStore";
@@ -18,12 +16,14 @@ import type { CascaderOption } from "@/types/departments";
 import type { FormSchema } from "@/types/form";
 import { PageTypeEnum } from "@/types/approval";
 import ApprovalForm from "./ApprovalFormClient";
+import { ensureLoggedIn, ensureRole } from "@/utils/authGuard";
 
 interface ApprovalDetailClientProps {
   pageType: string;
   approvalDetail: ApprovalRequestItem | null;
   departmentOptions: CascaderOption[];
   requestId?: string | null;
+  initialSchema: FormSchema;
 }
 
 export default function ApprovalDetailClient({
@@ -31,34 +31,20 @@ export default function ApprovalDetailClient({
   approvalDetail,
   departmentOptions,
   requestId,
+  initialSchema,
 }: ApprovalDetailClientProps) {
   const router = useRouter();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState<boolean>(false);
   const [message, contextHolder] = Message.useMessage();
   const { user } = useUserStore();
-  const [formSchema, setFormSchema] = useState<FormSchema | null>(null);
-  const [schemaLoading, setSchemaLoading] = useState<boolean>(false);
+  const [formSchema, setFormSchema] = useState<FormSchema | null>(initialSchema);
   const isReadOnly = pageType === 'details';
 
+  // Schema 已在服务端获取，这里仅在初始值变更时同步
   useEffect(() => {
-    const fetchSchema = async () => {
-      setSchemaLoading(true);
-      try {
-        const res = await getApprovalFormSchemaAction("approval.create");
-        if (!res.success || !res.data) {
-          throw new Error(res.error || "表单配置获取失败");
-        }
-        setFormSchema(res.data);
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : "表单配置获取失败";
-        showErrorMessage(message, msg);
-      } finally {
-        setSchemaLoading(false);
-      }
-    };
-    fetchSchema();
-  }, []);
+    setFormSchema(initialSchema);
+  }, [initialSchema]);
 
   // 处理审批详情数据变化，设置表单值
   useEffect(() => {
@@ -80,10 +66,9 @@ export default function ApprovalDetailClient({
 
   // 保存处理
   const handleSave = async () => {
-    if (!user) {
-      Message.error("请先登录");
-      return;
-    }
+    // 仅允许申请人/审批人
+    if (!ensureLoggedIn(user)) return;
+    if (!ensureRole(user, ["applicant", "approver"])) return;
 
     try {
       // 1. 表单校验通过的表单数据
@@ -212,59 +197,6 @@ export default function ApprovalDetailClient({
       });
   };
 
-  // 上传所有待上传的附件
-  const uploadAllAttachments = async (fileList: any[], attachmentType: 'image' | 'table')
-    : Promise<Array<AttachmentInput>> => {
-    const filesToUpload = fileList.filter((file) => {
-      const shouldUpload = !file.url && file.originFile;
-      return shouldUpload;
-    });
-    
-    if (attachmentType === 'table') {
-      await Promise.all(
-        filesToUpload.map((file) => {
-          return validateExcelFile(file.originFile);
-        })
-      );
-    }
-    const uploadResults = await Promise.allSettled(
-      filesToUpload.map(async (file) => {
-        // 图片上传前压缩，保证 1MB 内且最长边 1920
-        const uploadFile =
-          attachmentType === "image"
-            ? await compressImage(file.originFile)
-            : file.originFile;
-
-        const result = await uploadToOSS(uploadFile);;
-        return {
-          filePath: result.publicUrl,
-          fileName: uploadFile.name || file.originFile.name,
-          attachmentType,
-          fileSize: uploadFile.size || 0,
-          mimeType: uploadFile.type || file.originFile.type || null,
-        };
-      })
-    );
-    const successfulResults: AttachmentInput[] = [];
-    let failedCount = 0;
-    uploadResults.forEach(result => {
-      if (result.status === 'fulfilled') {
-        successfulResults.push(result.value);
-      } else {
-        failedCount++;
-      }
-    });
-    if (failedCount > 0) {
-      if (successfulResults.length > 0) {
-        await deleteOSSFiles(successfulResults); // OSS文件回滚
-      }
-      throw new Error('部分文件上传失败，已取消所有操作');
-    }
-
-    // 6. 全部成功，返回 URL 列表
-    return successfulResults;
-  };
-
   return (
     <div className="p-6 bg-zinc-50 min-h-screen">
       {/* 页面头部 */}
@@ -282,7 +214,7 @@ export default function ApprovalDetailClient({
 
       {/* 表单内容 */}
       <div className="bg-white rounded-md p-6">
-        <Spin loading={saving || schemaLoading} style={{ width: '100%' }}>
+        <Spin loading={saving} style={{ width: '100%' }}>
           <ApprovalForm
             form={form}
             isReadOnly={isReadOnly}

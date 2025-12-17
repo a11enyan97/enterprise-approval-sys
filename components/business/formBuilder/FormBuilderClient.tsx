@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Form, Input, Space, Tag, Typography } from "@arco-design/web-react";
-import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors, KeyboardSensor } from "@dnd-kit/core";
+import { Button, Card, Form, Input, Space, Tag, Typography, Message, Modal } from "@arco-design/web-react";
+import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, KeyboardSensor } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { FieldType, FormField } from "@/types/formBuilder";
 import { useFormBuilderStore } from "@/store/useFormBuilderStore";
+import { useUserStore } from "@/store/userStore";
+import { createFormTemplateAction } from "@/actions/form.action";
 import PropertyPanel from "@/components/business/formBuilder/PropertyPanel";
 import Canvas from "@/components/business/formBuilder/Canvas";
 import PaletteItem, { paletteItems } from "@/components/business/formBuilder/PaletteItem";
@@ -15,10 +17,13 @@ const { Title, Paragraph } = Typography;
 
 export default function FormBuilderClient() {
   const sensors = useSensors(
+    // 鼠标传感器：拖拽距离≥4px才激活，避免误触
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // 键盘传感器：支持方向键拖拽排序
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Zustand 全局状态与动作
   const schema = useFormBuilderStore((state) => state.schema);
   const selectedFieldId = useFormBuilderStore((state) => state.selectedFieldId);
   const addField = useFormBuilderStore((state) => state.addField);
@@ -33,34 +38,19 @@ export default function FormBuilderClient() {
   const selectedField = useMemo(() => fields.find((item) => item._id === selectedFieldId), [fields, selectedFieldId]);
   const [activeField, setActiveField] = useState<FormField | null>(null);
   const [activeOverlayWidth, setActiveOverlayWidth] = useState<number | undefined>(undefined);
+  
+  // 保存相关状态
+  const { user } = useUserStore();
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveForm] = Form.useForm();
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveField(null);
-    setActiveOverlayWidth(undefined);
-    if (!over) return;
-
-    const overId = String(over.id);
-    const overSource = over.data?.current?.source;
-    const activeSource = active.data?.current?.source;
-    if (activeSource === "palette") {
-      const type = active.data?.current?.fieldType as FieldType;
-      // 只有当落点在画布或画布内的字段上时才新增
-      if (overSource === "canvas") {
-        addField(type, overId !== "canvas" ? overId : undefined);
-      }
-      return;
-    }
-
-    if (active.id !== over.id) {
-      moveField(String(active.id), overId);
-    }
-  };
-
+  // 拖拽开始：记录拖拽影子；画布内保持原宽度，Palette 使用模板预览
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const activeSource = active.data?.current?.source;
     if (activeSource === "canvas") {
+      // 画布的渲染影子容器
       const found = fields.find((item) => item._id === active.id);
       setActiveField(found || null);
       const el = typeof document !== "undefined"
@@ -69,6 +59,7 @@ export default function FormBuilderClient() {
       const width = el?.getBoundingClientRect().width;
       setActiveOverlayWidth(width);
     } else {
+      // Palette 的渲染影子容器
       const type = active.data?.current?.fieldType as FieldType | undefined;
       if (type) {
         const template = paletteItems.find((item) => item.type === type);
@@ -90,6 +81,35 @@ export default function FormBuilderClient() {
     }
   };
 
+  // 拖拽结束：Palette -> 画布新增；画布内部排序
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveField(null);
+    setActiveOverlayWidth(undefined);
+    
+    // 如果没有落点，直接返回（拖到画布外）
+    if (!over) return;
+
+    const overId = String(over.id);
+    const activeSource = active.data?.current?.source;
+    
+    if (activeSource === "palette") {
+      const type = active.data?.current?.fieldType as FieldType;
+      const isCanvasContainer = overId === "canvas";
+      
+      if (isCanvasContainer) {
+        addField(type, overId);
+      }
+      return;
+    }
+
+    // 画布内部排序：只有当拖到不同位置时才移动
+    if (active.id !== over.id) {
+      moveField(String(active.id), overId);
+    }
+  };
+
+  // 右侧属性面板回调：部分更新字段
   const handlePropertyChange = (patch: any) => {
     if (!selectedField) return;
     updateField(selectedField._id, patch);
@@ -103,6 +123,61 @@ export default function FormBuilderClient() {
       description: schema.description,
     });
   }, [schema.title, schema.description, metaForm]);
+
+  // 保存表单模板
+  const handleSave = async () => {
+    if (!user) {
+      Message.error("请先登录");
+      return;
+    }
+
+    if (fields.length === 0) {
+      Message.warning("请至少添加一个字段");
+      return;
+    }
+
+    setSaveModalVisible(true);
+    // 初始化保存表单：使用 schema 的 title 作为默认 name，生成默认 key
+    saveForm.setFieldsValue({
+      key: schema.title ? `form_${schema.title.toLowerCase().replace(/\s+/g, "_")}` : "",
+      name: schema.title || "未命名表单",
+      description: schema.description || "",
+    });
+  };
+
+  // 确认保存
+  const handleConfirmSave = async () => {
+    try {
+      const values = await saveForm.validate();
+      if (!values.key || !values.name) {
+        Message.error("请填写表单 key 和名称");
+        return;
+      }
+
+      setSaving(true);
+      const result = await createFormTemplateAction({
+        key: values.key,
+        name: values.name,
+        description: values.description,
+        schema: schema,
+        createdBy: user.id,
+        isPublished: false, // 默认不发布
+      });
+
+      if (!result.success) {
+        throw new Error("error" in result ? result.error : "保存失败");
+      }
+
+      Message.success("保存成功");
+      setSaveModalVisible(false);
+      saveForm.resetFields();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "保存失败";
+      Message.error(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -118,8 +193,11 @@ export default function FormBuilderClient() {
           </div>
           <Space>
             <Button onClick={() => reset()}>清空画布</Button>
-            <Button type="primary" onClick={() => navigator.clipboard?.writeText(JSON.stringify(schema, null, 2))}>
+            <Button onClick={() => navigator.clipboard?.writeText(JSON.stringify(schema, null, 2))}>
               复制 JSON
+            </Button>
+            <Button type="primary" onClick={handleSave} disabled={fields.length === 0}>
+              保存模板
             </Button>
           </Space>
         </div>
@@ -127,7 +205,7 @@ export default function FormBuilderClient() {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
         onDragCancel={() => setActiveField(null)}
@@ -180,7 +258,7 @@ export default function FormBuilderClient() {
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} style={{ cursor: "grabbing" }}>
           {activeField ? (
             <div
               className="rounded-lg border border-blue-200 bg-white p-3 shadow"
@@ -197,6 +275,44 @@ export default function FormBuilderClient() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* 保存模板弹窗 */}
+      <Modal
+        title="保存表单模板"
+        visible={saveModalVisible}
+        onOk={handleConfirmSave}
+        onCancel={() => {
+          setSaveModalVisible(false);
+          saveForm.resetFields();
+        }}
+        confirmLoading={saving}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form form={saveForm} layout="vertical">
+          <Form.Item
+            label="表单 Key"
+            field="key"
+            rules={[
+              { required: true, message: "请输入表单 key" },
+              { match: /^[a-z][a-z0-9_]*$/, message: "key 只能包含小写字母、数字和下划线，且必须以字母开头" },
+            ]}
+            extra="唯一标识，如：hr_leave_request"
+          >
+            <Input placeholder="如：hr_leave_request" />
+          </Form.Item>
+          <Form.Item
+            label="表单名称"
+            field="name"
+            rules={[{ required: true, message: "请输入表单名称" }]}
+          >
+            <Input placeholder="如：请假申请单" />
+          </Form.Item>
+          <Form.Item label="表单描述" field="description">
+            <Input.TextArea placeholder="请输入描述" autoSize={{ minRows: 2, maxRows: 4 }} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

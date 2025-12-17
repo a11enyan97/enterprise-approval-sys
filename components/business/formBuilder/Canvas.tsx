@@ -1,5 +1,9 @@
 "use client";
 
+/** 
+ * 画布区域：显示表单字段卡片，支持拖拽排序与删除
+ */
+
 import { Empty } from "@arco-design/web-react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";

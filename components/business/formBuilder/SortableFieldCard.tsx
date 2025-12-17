@@ -1,5 +1,9 @@
 "use client";
 
+/** 
+ * 可拖拽的字段卡片：显示字段信息，支持拖拽排序与删除
+ */
+
 import { Button, Tag } from "@arco-design/web-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -37,6 +41,8 @@ export default function SortableFieldCard({ field, isSelected, onSelect, onDelet
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes} 
+      {...listeners}
       className="group mb-3 rounded-lg border bg-white p-3 shadow-sm"
       data-dnd-id={field._id}
     >
@@ -55,7 +61,7 @@ export default function SortableFieldCard({ field, isSelected, onSelect, onDelet
           <Button size="mini" status="danger" type="text" onClick={() => onDelete(field._id)}>
             删除
           </Button>
-          <Button size="mini" type="text" className="cursor-grab text-gray-500" {...attributes} {...listeners}>
+          <Button size="mini" type="text" className="cursor-grab text-gray-500" >
             拖拽
           </Button>
         </div>
