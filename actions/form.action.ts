@@ -15,7 +15,8 @@ import {
 } from "@/services/form-submission.service";
 import { handleActionError } from "@/services/_shared/errors";
 import type { FormSchema } from "@/types/formBuilder";
-
+import type { AttachmentInput } from "@/types/approval";
+import { cleanFormData } from "@/utils/formatUtils";
 /**
  * 创建表单模板
  * @param params 表单模板数据
@@ -157,32 +158,6 @@ export async function getFormTemplateListAction(params?: {
 }
 
 /**
- * 创建表单提交记录
- * @param params 表单提交数据
- * @returns 创建结果
- */
-export async function createFormSubmissionAction(params: {
-  templateId: string;
-  data: Record<string, any>;
-  submittedBy: number;
-  status?: "PENDING" | "APPROVED" | "REJECTED";
-}) {
-  try {
-    const submission = await createFormSubmission(params);
-    return {
-      success: true,
-      data: submission,
-    };
-  } catch (error) {
-    const errorResponse = handleActionError(error, "提交表单失败");
-    return {
-      success: false,
-      ...errorResponse,
-    };
-  }
-}
-
-/**
  * 提交表单并创建审批请求（整合流程）
  * 1. 保存 FormSubmission（包含 JSON 数据和 schema 快照）
  * 2. 从 JSON 数据中提取关键信息（项目名称、申请部门等）
@@ -201,28 +176,27 @@ export async function submitFormWithApprovalAction(params: {
   data: Record<string, any>;
   submittedBy: number;
   schema: FormSchema;
-  attachments?: Array<{
-    filePath: string;
-    fileName: string;
-    attachmentType: "image" | "table";
-    fileSize: number;
-    mimeType: string | null;
-  }>;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  attachments?: AttachmentInput[];
 }) {
   try {
     // 导入提取工具函数
     const { extractApprovalInfo } = await import("@/utils/formDataExtractor");
+    // 引入表单提交服务
     const { createFormSubmissionWithApproval } = await import("@/services/form-submission.service");
 
     // 1. 从表单数据中提取关键信息
     const approvalInfo = extractApprovalInfo(params.data, params.schema);
-
+    console.log("清洗前表单数据：",params.data);
+    // 清理表单数据，移除不可序列化的字段
+    const cleanedData = cleanFormData(params.data);
+    console.log("清洗后表单数据：",cleanedData);
     // 2. 创建表单提交记录并关联审批请求
     const result = await createFormSubmissionWithApproval({
       templateId: params.templateId,
-      data: params.data,
+      data: cleanedData,
       submittedBy: params.submittedBy,
-      status: "PENDING",
+      status: params.status,
       approvalRequestData: {
         ...approvalInfo,
         attachments: params.attachments,
@@ -234,6 +208,8 @@ export async function submitFormWithApprovalAction(params: {
       data: result,
     };
   } catch (error) {
+    console.log(error);
+    
     const errorResponse = handleActionError(error, "提交表单并创建审批请求失败");
     return {
       success: false,
@@ -322,3 +298,49 @@ export async function updateFormSubmissionStatusAction(
   }
 }
 
+/**
+ * 更新表单提交记录并同步更新审批请求
+ * 用于编辑审批申请
+ */
+export async function updateFormSubmissionWithApprovalAction(
+  submissionId: string,
+  params: {
+    data: Record<string, any>;
+    schema: FormSchema;
+    attachments?: AttachmentInput[];
+    updatedBy: number;
+  }
+) {
+  try {
+    const { extractApprovalInfo } = await import("@/utils/formDataExtractor");
+    const { updateFormSubmissionWithApproval } = await import("@/services/form-submission.service");
+
+    // 1. 提取信息
+    const approvalInfo = extractApprovalInfo(params.data, params.schema);
+
+    // 清洗数据
+    const cleanedData = cleanFormData(params.data);
+
+    // 2. 调用服务更新
+    const result = await updateFormSubmissionWithApproval(submissionId, {
+      data: cleanedData,
+      approvalRequestData: {
+        ...approvalInfo,
+        attachments: params.attachments,
+      },
+      updaterId: params.updatedBy
+    });
+
+    return {
+      success: true,
+      data: result
+    };
+
+  } catch (error) {
+    const errorResponse = handleActionError(error, "更新表单提交失败");
+    return {
+      success: false,
+      ...errorResponse
+    };
+  }
+}

@@ -1,12 +1,10 @@
-import type { FormSchema, FormField } from "@/types/formBuilder";
+import type { FormSchema} from "@/types/formBuilder";
 
 /**
- * 从表单数据和 schema 中提取关键信息
- * 用于创建 ApprovalRequest 时填充项目名称、申请部门、执行日期等字段
- * 
- * @param formData 表单提交的 JSON 数据
+ * 服务端提取客户端提交的表单数据中的关键信息
+ * @param formData 客户端提交的表单数据
  * @param schema 表单 schema（包含字段定义）
- * @returns 提取的关键信息
+ * @returns 提取的关键信息：项目名称、审批内容、申请部门、执行日期
  */
 export function extractApprovalInfo(
   formData: Record<string, any>,

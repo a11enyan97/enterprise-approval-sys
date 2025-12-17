@@ -3,7 +3,7 @@
 import { Form, Button, Grid } from "@arco-design/web-react";
 import type { FormInstance } from "@arco-design/web-react";
 import type { CascaderOption } from "@/types/departments";
-import type { FormSchema } from "@/types/form";
+import type { FormSchema } from "@/types/formBuilder";
 import { renderFormField } from "./FormFieldRenderer";
 
 const FormItem = Form.Item;

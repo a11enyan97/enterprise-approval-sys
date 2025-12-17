@@ -1,6 +1,8 @@
 import { prisma } from "@/prisma/db";
+import { Prisma } from "@/generated/prisma/client";
 import { ValidationError } from "./_shared/validators";
 import { serialize } from "./_shared/utils";
+import type { AttachmentInput } from "@/types/approval";
 
 /**
  * 创建表单提交记录
@@ -12,14 +14,16 @@ export async function createFormSubmission(input: {
   data: Record<string, any>;
   submittedBy: number;
   status?: "PENDING" | "APPROVED" | "REJECTED";
-}) {
+}, tx?: Prisma.TransactionClient) {
+  const db = tx || prisma;
+
   // 1. 验证必填字段
   if (!input.templateId || !input.submittedBy) {
     throw new ValidationError("模板ID和提交人ID不能为空", "templateId/submittedBy", "MISSING_REQUIRED_FIELDS");
   }
 
-  // 2. 检查模板是否存在
-  const template = await prisma.formTemplate.findUnique({
+  // 2. 检查提交数据对应的表单模板是否存在
+  const template = await db.formTemplate.findUnique({
     where: { id: input.templateId },
   });
 
@@ -38,7 +42,7 @@ export async function createFormSubmission(input: {
   }
 
   // 5. 创建提交记录
-  const submission = await prisma.formSubmission.create({
+  const submission = await db.formSubmission.create({
     data: {
       templateId: input.templateId,
       schemaSnapshot: template.schema as any, // 保存提交时的表单模板 schema 快照
@@ -83,110 +87,217 @@ export async function createFormSubmissionWithApproval(input: {
     approvalContent?: string;
     deptId?: number | string | null;
     executeDate?: Date | string;
-    attachments?: Array<{
-      filePath: string;
-      fileName: string;
-      attachmentType: "image" | "table";
-      fileSize: number;
-      mimeType: string | null;
-    }>;
+    attachments?: AttachmentInput[];
   };
 }) {
-  // 1. 创建表单提交记录
-  const submission = await createFormSubmission({
-    templateId: input.templateId,
-    data: input.data,
-    submittedBy: input.submittedBy,
-    status: input.status,
-  });
+  const { approvalRequestData, ...submissionParams } = input;
 
-  // 2. 导入部门服务
-  const { getDepartmentPathInfo } = await import("./departments.service");
+  return await prisma.$transaction(async (tx) => {
+    // 1. 创建表单提交记录
+    const submission = await createFormSubmission(submissionParams, tx);
 
-  // 3. 处理部门信息
-  let deptLevel1Id: number | null = null;
-  let deptLevel2Id: number | null = null;
-  let deptLevel3Id: number | null = null;
-  let deptFullPath: string | null = null;
+    // 2. 导入部门服务
+    const { getDepartmentPathInfo } = await import("./departments.service");
 
-  if (input.approvalRequestData.deptId) {
-    const deptPathInfo = await getDepartmentPathInfo(Number(input.approvalRequestData.deptId));
-    if (deptPathInfo) {
-      deptLevel1Id = deptPathInfo.deptLevel1Id;
-      deptLevel2Id = deptPathInfo.deptLevel2Id;
-      deptLevel3Id = deptPathInfo.deptLevel3Id;
-      deptFullPath = deptPathInfo.deptFullPath;
+    // 3. 处理部门信息
+    let deptLevel1Id: number | null = null;
+    let deptLevel2Id: number | null = null;
+    let deptLevel3Id: number | null = null;
+    let deptFullPath: string | null = null;
+
+    if (approvalRequestData.deptId) {
+      const deptPathInfo = await getDepartmentPathInfo(Number(approvalRequestData.deptId));
+      if (deptPathInfo) {
+        deptLevel1Id = deptPathInfo.deptLevel1Id;
+        deptLevel2Id = deptPathInfo.deptLevel2Id;
+        deptLevel3Id = deptPathInfo.deptLevel3Id;
+        deptFullPath = deptPathInfo.deptFullPath;
+      }
     }
-  }
 
-  // 4. 处理执行日期
-  const executeDate = input.approvalRequestData.executeDate
-    ? input.approvalRequestData.executeDate instanceof Date
-      ? input.approvalRequestData.executeDate
-      : new Date(input.approvalRequestData.executeDate)
-    : new Date();
+    // 4. 处理执行日期
+    const executeDate = approvalRequestData.executeDate
+      ? approvalRequestData.executeDate instanceof Date
+        ? approvalRequestData.executeDate
+        : new Date(approvalRequestData.executeDate)
+      : new Date();
 
-  // 5. 创建审批请求，关联 submissionId
-  const approval = await prisma.approvalRequest.create({
-    data: {
-      requestNo: `APP${Date.now()}`,
-      projectName: input.approvalRequestData.projectName,
-      approvalContent: input.approvalRequestData.approvalContent || null,
-      deptFullPath,
-      deptLevel1Id,
-      deptLevel2Id,
-      deptLevel3Id,
-      executeDate,
-      applicantId: input.submittedBy,
-      submissionId: submission.id, // 关联表单提交记录
-      currentStatus: "pending", // 提交后状态为待审批
-      submittedAt: new Date(),
-    },
-    include: {
-      applicant: {
-        select: {
-          id: true,
-          realName: true,
-          username: true,
+    // 5. 创建审批请求，关联 submissionId
+    const approval = await tx.approvalRequest.create({
+      data: {
+        requestNo: `APP${Date.now()}`,
+        projectName: approvalRequestData.projectName,
+        approvalContent: approvalRequestData.approvalContent || null,
+        deptFullPath,
+        deptLevel1Id,
+        deptLevel2Id,
+        deptLevel3Id,
+        executeDate,
+        applicantId: input.submittedBy,
+        submissionId: submission.id, // 关联表单提交记录
+        currentStatus: "draft", 
+        submittedAt: new Date(),
+      },
+      include: {
+        applicant: {
+          select: {
+            id: true,
+            realName: true,
+            username: true,
+          },
         },
       },
-    },
-  });
-
-  // 6. 创建附件记录（如果有附件）
-  if (input.approvalRequestData.attachments && input.approvalRequestData.attachments.length > 0) {
-    await prisma.approvalAttachment.createMany({
-      data: input.approvalRequestData.attachments.map((att) => ({
-        requestId: approval.id,
-        attachmentType: att.attachmentType,
-        fileName: att.fileName,
-        filePath: att.filePath,
-        fileSize: BigInt(att.fileSize || 0),
-        mimeType: att.mimeType || null,
-        uploaderId: input.submittedBy,
-      })),
     });
-  }
 
-  // 7. 重新查询以包含完整信息
-  const approvalWithAttachments = await prisma.approvalRequest.findUnique({
-    where: { id: approval.id },
-    include: {
-      applicant: {
-        select: {
-          id: true,
-          realName: true,
-          username: true,
+    // 6. 创建附件记录（如果有附件）
+    if (approvalRequestData.attachments && approvalRequestData.attachments.length > 0) {
+      await tx.approvalAttachment.createMany({
+        data: approvalRequestData.attachments.map((att) => ({
+          requestId: approval.id,
+          attachmentType: att.attachmentType,
+          fileName: att.fileName,
+          filePath: att.filePath,
+          fileSize: BigInt(att.fileSize || 0),
+          mimeType: att.mimeType || null,
+          uploaderId: input.submittedBy,
+        })),
+      });
+    }
+
+    // 7. 重新查询以包含完整信息
+    const approvalWithAttachments = await tx.approvalRequest.findUnique({
+      where: { id: approval.id },
+      include: {
+        applicant: {
+          select: {
+            id: true,
+            realName: true,
+            username: true,
+          },
         },
+        attachments: true,
       },
-      attachments: true,
-    },
-  });
+    });
 
-  return {
-    submission: serialize(submission),
-    approval: serialize(approvalWithAttachments || approval),
-  };
+    return {
+      submission: serialize(submission),
+      approval: serialize(approvalWithAttachments || approval),
+    };
+  });
+}
+
+/**
+ * 更新表单提交并同步审批请求
+ * @param submissionId 提交记录ID
+ * @param input 更新数据
+ * @returns 更新后的提交记录
+ */
+export async function updateFormSubmissionWithApproval(
+  submissionId: string,
+  input: {
+    data: Record<string, any>;
+    approvalRequestData: {
+      projectName: string;
+      approvalContent?: string;
+      deptId?: number | string | null;
+      executeDate?: Date | string;
+      attachments?: AttachmentInput[];
+    };
+    updaterId: number;
+  }
+) {
+  const { approvalRequestData } = input;
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. 更新 FormSubmission表
+    const submission = await tx.formSubmission.update({
+      where: { id: submissionId },
+      data: {
+        data: input.data as any,
+      },
+      include: {
+        template: {
+            select: {
+                id: true,
+                key: true,
+                name: true,
+                schema: true,
+            }
+        }
+      }
+    });
+
+    // 2. 找到关联的 ApprovalRequest
+    const approvalRequest = await tx.approvalRequest.findFirst({
+      where: { submissionId: submissionId },
+    });
+
+    if (!approvalRequest) {
+      // 如果没有关联审批请求，是否要创建一个？
+      // 这种情况很少见（除非数据不一致），这里抛出错误更安全
+      throw new ValidationError("关联的审批请求不存在", "submissionId", "APPROVAL_NOT_FOUND");
+    }
+
+    // 3. 处理部门信息
+    const { getDepartmentPathInfo } = await import("./departments.service");
+    let deptLevel1Id: number | null = null;
+    let deptLevel2Id: number | null = null;
+    let deptLevel3Id: number | null = null;
+    let deptFullPath: string | null = null;
+
+    if (approvalRequestData.deptId) {
+      const deptPathInfo = await getDepartmentPathInfo(Number(approvalRequestData.deptId));
+      if (deptPathInfo) {
+        deptLevel1Id = deptPathInfo.deptLevel1Id;
+        deptLevel2Id = deptPathInfo.deptLevel2Id;
+        deptLevel3Id = deptPathInfo.deptLevel3Id;
+        deptFullPath = deptPathInfo.deptFullPath;
+      }
+    }
+
+    // 4. 处理执行日期
+    const executeDate = approvalRequestData.executeDate
+      ? approvalRequestData.executeDate instanceof Date
+        ? approvalRequestData.executeDate
+        : new Date(approvalRequestData.executeDate)
+      : new Date();
+
+    // 5. 更新 ApprovalRequest
+    await tx.approvalRequest.update({
+      where: { id: approvalRequest.id },
+      data: {
+        projectName: approvalRequestData.projectName,
+        approvalContent: approvalRequestData.approvalContent || null,
+        deptFullPath,
+        deptLevel1Id,
+        deptLevel2Id,
+        deptLevel3Id,
+        executeDate,
+        updatedAt: new Date(),
+      },
+    });
+
+    // 6. 更新附件 (全量替换：先删后加)
+    await tx.approvalAttachment.deleteMany({
+      where: { requestId: approvalRequest.id },
+    });
+
+    if (approvalRequestData.attachments && approvalRequestData.attachments.length > 0) {
+      await tx.approvalAttachment.createMany({
+        data: approvalRequestData.attachments.map((att) => ({
+          requestId: approvalRequest.id,
+          attachmentType: att.attachmentType,
+          fileName: att.fileName,
+          filePath: att.filePath,
+          fileSize: BigInt(att.fileSize || 0),
+          mimeType: att.mimeType || null,
+          uploaderId: input.updaterId,
+        })),
+      });
+    }
+
+    return serialize(submission);
+  });
 }
 
 /**

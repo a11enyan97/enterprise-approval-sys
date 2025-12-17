@@ -1,4 +1,4 @@
-import type { FormSchema } from "@/types/form";
+import type { FormSchema } from "@/types/formBuilder";
 
 /**
  * 审批单创建表单配置
@@ -38,7 +38,7 @@ export const approvalCreateSchema: FormSchema = {
         { required: true, message: "请输入审批内容" },
         { maxLength: 300, message: "审批内容不能超过300字" },
       ],
-      componentProps: {
+      props: {
         maxLength: 300,
         showWordLimit: true,
         autoSize: { minRows: 4, maxRows: 8 },
@@ -51,7 +51,7 @@ export const approvalCreateSchema: FormSchema = {
       required: true,
       placeholder: "请选择执行日期",
       rules: [{ required: true, message: "请选择执行日期" }],
-      componentProps: {
+      props: {
         format: "YYYY-MM-DD",
       },
     },
@@ -59,7 +59,8 @@ export const approvalCreateSchema: FormSchema = {
       key: "imageAttachments",
       label: "图片附件",
       type: "uploadImage",
-      componentProps: {
+      required: false,
+      props: {
         multiple: true,
         imagePreview: true,
         limit: 3,
@@ -71,7 +72,8 @@ export const approvalCreateSchema: FormSchema = {
       key: "tableAttachments",
       label: "表格附件",
       type: "uploadTable",
-      componentProps: {
+      required: false,
+      props: {
         accept: ".xlsx,.xls",
       },
     },

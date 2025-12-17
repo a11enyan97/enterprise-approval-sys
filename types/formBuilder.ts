@@ -1,9 +1,15 @@
-export type FieldType = "input" | "textarea" | "date" | "treeSelect" | "uploadImage" | "uploadTable";
+export type FormFieldType =
+  | "input"
+  | "textarea"
+  | "date"
+  | "treeSelect"
+  | "uploadImage"
+  | "uploadTable";
 
 export interface FormField {
-  _id: string; // 前端拖拽用的唯一标识
+  _id?: string; // 前端拖拽用的唯一标识
   key: string; // 提交给后端的字段名
-  type: FieldType; // 组件类型
+  type: FormFieldType; // 组件类型
   label: string; // 显示标题
   required: boolean;
   placeholder?: string;
@@ -11,9 +17,16 @@ export interface FormField {
   rules?: any[]; // 校验规则
 }
 
+export interface FormLayoutConfig {
+  labelCol?: { span: number };
+  wrapperCol?: { span: number };
+}
+
 export interface FormSchema {
+  key: string;
   title: string;
-  description: string;
+  description?: string;
+  layout?: FormLayoutConfig;
   fields: FormField[];
 }
 

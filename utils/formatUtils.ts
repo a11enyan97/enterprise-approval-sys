@@ -64,3 +64,39 @@ export function convertExistingAttachmentsToInput(
     });
 }
 
+/**
+ * Next.js Server Actions 不支持直接传输包含方法的复杂对象（如 Dayjs 对象），
+ * 它只支持普通的 JSON 对象、原生 Date 对象等。
+ * 因此需要递归清理表单数据：
+ * 1. 移除所有层级中的 原始 File 对象
+ * 2. 将 Dayjs 对象转换为原生 Date 对象（以便 Server Actions 序列化）
+ * @param data 任意数据
+ * @returns 清理后的数据
+ */
+export function cleanFormData(data: any): any {
+  if (data === null || typeof data !== "object") {
+    return data;
+  }
+
+  // 处理 Dayjs 对象 -> 转为原生 Date
+  if (dayjs.isDayjs(data)) {
+    return data.toDate();
+  }
+
+  // 如果是数组，递归处理每个元素
+  if (Array.isArray(data)) {
+    return data.map((item) => cleanFormData(item));
+  }
+
+  // 如果是对象
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    // 明确移除 originFile 字段
+    if (key === "originFile") {
+      continue;
+    }
+    // 递归处理值
+    cleaned[key] = cleanFormData(value);
+  }
+  return cleaned;
+}

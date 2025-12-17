@@ -5,13 +5,14 @@ import { Button, Card, Form, Input, Space, Tag, Typography, Message, Modal } fro
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, KeyboardSensor } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import type { FieldType, FormField } from "@/types/formBuilder";
+import type { FormFieldType, FormField } from "@/types/formBuilder";
 import { useFormBuilderStore } from "@/store/useFormBuilderStore";
 import { useUserStore } from "@/store/userStore";
 import { createFormTemplateAction } from "@/actions/form.action";
 import PropertyPanel from "@/components/business/formBuilder/PropertyPanel";
 import Canvas from "@/components/business/formBuilder/Canvas";
 import PaletteItem, { paletteItems } from "@/components/business/formBuilder/PaletteItem";
+import { showSuccessMessage } from "@/utils/approvalUtils";
 
 const { Title, Paragraph } = Typography;
 
@@ -35,7 +36,8 @@ export default function FormBuilderClient() {
   const reset = useFormBuilderStore((state) => state.reset);
 
   const fields = schema.fields;
-  const selectedField = useMemo(() => fields.find((item) => item._id === selectedFieldId), [fields, selectedFieldId]);
+  const [message, contextHolder] = Message.useMessage();
+  const selectedField = useMemo(() => fields.find((item: FormField) => item._id === selectedFieldId), [fields, selectedFieldId]);
   const [activeField, setActiveField] = useState<FormField | null>(null);
   const [activeOverlayWidth, setActiveOverlayWidth] = useState<number | undefined>(undefined);
   
@@ -51,7 +53,7 @@ export default function FormBuilderClient() {
     const activeSource = active.data?.current?.source;
     if (activeSource === "canvas") {
       // 画布的渲染影子容器
-      const found = fields.find((item) => item._id === active.id);
+      const found = fields.find((item: FormField) => item._id === active.id);
       setActiveField(found || null);
       const el = typeof document !== "undefined"
         ? (document.querySelector(`[data-dnd-id="${active.id}"]`) as HTMLElement | null)
@@ -60,7 +62,7 @@ export default function FormBuilderClient() {
       setActiveOverlayWidth(width);
     } else {
       // Palette 的渲染影子容器
-      const type = active.data?.current?.fieldType as FieldType | undefined;
+      const type = active.data?.current?.fieldType as FormFieldType | undefined;
       if (type) {
         const template = paletteItems.find((item) => item.type === type);
         setActiveField({
@@ -94,7 +96,7 @@ export default function FormBuilderClient() {
     const activeSource = active.data?.current?.source;
     
     if (activeSource === "palette") {
-      const type = active.data?.current?.fieldType as FieldType;
+      const type = active.data?.current?.fieldType as FormFieldType;
       const isCanvasContainer = overId === "canvas";
       
       if (isCanvasContainer) {
@@ -160,7 +162,7 @@ export default function FormBuilderClient() {
         name: values.name,
         description: values.description,
         schema: schema,
-        createdBy: user.id,
+        createdBy: user?.id as number,
         isPublished: false, // 默认不发布
       });
 
@@ -168,9 +170,10 @@ export default function FormBuilderClient() {
         throw new Error("error" in result ? result.error : "保存失败");
       }
 
-      Message.success("保存成功");
       setSaveModalVisible(false);
-      saveForm.resetFields();
+      showSuccessMessage(message, "保存成功", () => {
+        saveForm.resetFields();
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "保存失败";
       Message.error(errorMessage);
@@ -181,6 +184,7 @@ export default function FormBuilderClient() {
 
   return (
     <div className="space-y-4">
+      {contextHolder}
       <Card>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

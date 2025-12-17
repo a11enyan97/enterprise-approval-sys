@@ -132,7 +132,8 @@ export async function getApprovalRequestById(requestId: bigint) {
           username: true,
         },
       },
-      attachments: true,
+      attachments: true, // 连表查询附件
+      submission: true, // 连表查询表单提交记录
     },
   });
 
@@ -157,14 +158,14 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
   if (options?.status) {
     where.currentStatus = options.status;
   }
-  
+
   // 项目名称模糊查询
   if (options?.projectName) {
     where.projectName = {
       contains: options.projectName,
     };
   }
-  
+
   // 创建时间范围查询
   if (options?.createTimeStart || options?.createTimeEnd) {
     where.createdAt = {};
@@ -175,7 +176,7 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
       where.createdAt.lte = new Date(options.createTimeEnd);
     }
   }
-  
+
   // 审批时间范围查询（completedAt 字段）
   if (options?.approvalTimeStart || options?.approvalTimeEnd) {
     where.completedAt = {};
@@ -186,7 +187,7 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
       where.completedAt.lte = new Date(options.approvalTimeEnd);
     }
   }
-  
+
   // 部门筛选：优先使用 deptId，如果提供了 deptId，则根据该部门ID查询该部门及其所有子部门
   if (options?.deptId) {
     // 根据部门ID获取部门路径信息
@@ -239,12 +240,11 @@ export async function getApprovalRequestList(options?: GetApprovalListParams) {
 /**
  * 申请人——提交审批申请
  * @param requestId 审批申请ID
- * @returns 更新后的审批申请记录
+ * @returns 状态更新后的审批申请记录
  * @throws ValidationError 如果申请不存在、不是 draft 状态
  */
 export async function submitApprovalRequest(
   requestId: bigint | string | number,
-  data?: SubmitApprovalRequestInput
 ) {
   // 1. 转换 requestId 为 BigInt
   const id =
@@ -274,91 +274,18 @@ export async function submitApprovalRequest(
   }
 
   const updateData: any = {};
+  // 只更新状态字段
+  updateData.currentStatus = "pending";
 
-  // 提交审批和更新审批：如果传入 currentStatus，只更新状态字段；否则更新其他字段
-  if (data?.currentStatus !== undefined) {
-    // 只更新状态字段
-    updateData.currentStatus = data.currentStatus;
-    
-    // 如果状态改为 pending，设置提交时间
-    if (data.currentStatus === "pending") {
-      // 验证原状态必须是 draft
-      if (existingApproval.currentStatus !== "draft") {
-        throw new ValidationError(
-          `审批申请状态为 ${existingApproval.currentStatus}，只有 draft 状态的申请可以提交`,
-          "currentStatus",
-          "INVALID_STATUS"
-        );
-      }
-      updateData.submittedAt = new Date();
-    }
-  } else if (data) {
-    // 验证记录状态是否为 draft（只有 draft 状态可以修改）
-    if (existingApproval.currentStatus !== "draft") {
-      throw new ValidationError(
-        `审批申请状态为 ${existingApproval.currentStatus}，只有 draft 状态的申请可以修改`,
-        "currentStatus",
-        "INVALID_STATUS"
-      );
-    }
-
-    // 处理部门信息：如果提供了 deptId，则根据 deptId 构建完整路径
-    if (data.deptId !== undefined) {
-      const deptPathInfo = await getDepartmentPathInfo(data.deptId);
-      if (!deptPathInfo) {
-        throw new ValidationError(
-          `部门ID ${data.deptId} 不存在`,
-          "deptId",
-          "DEPARTMENT_NOT_FOUND"
-        );
-      }
-      updateData.deptLevel1Id = deptPathInfo.deptLevel1Id;
-      updateData.deptLevel2Id = deptPathInfo.deptLevel2Id;
-      updateData.deptLevel3Id = deptPathInfo.deptLevel3Id;
-      updateData.deptFullPath = deptPathInfo.deptFullPath;
-      
-      // 验证部门信息
-      await validateDepartments(
-        updateData.deptLevel1Id,
-        updateData.deptLevel2Id,
-        updateData.deptLevel3Id
-      );
-    } else if (
-      data.deptLevel1Id !== undefined ||
-      data.deptLevel2Id !== undefined ||
-      data.deptLevel3Id !== undefined
-    ) {
-      // 如果直接提供了层级ID，则使用提供的值
-      await validateDepartments(
-        data.deptLevel1Id,
-        data.deptLevel2Id,
-        data.deptLevel3Id
-      );
-      updateData.deptLevel1Id =
-        data.deptLevel1Id !== undefined ? data.deptLevel1Id : null;
-      updateData.deptLevel2Id =
-        data.deptLevel2Id !== undefined ? data.deptLevel2Id : null;
-      updateData.deptLevel3Id =
-        data.deptLevel3Id !== undefined ? data.deptLevel3Id : null;
-    }
-
-    if (data.projectName !== undefined) {
-      updateData.projectName = data.projectName;
-    }
-    if (data.approvalContent !== undefined) {
-      updateData.approvalContent = data.approvalContent;
-    }
-    if (data.deptFullPath !== undefined && data.deptId === undefined) {
-      // 只有在没有提供 deptId 时才使用直接提供的 deptFullPath
-      updateData.deptFullPath = data.deptFullPath;
-    }
-    if (data.executeDate) {
-      updateData.executeDate =
-        data.executeDate instanceof Date
-          ? data.executeDate
-          : new Date(data.executeDate);
-    }
+  // 验证原状态必须是 draft
+  if (existingApproval.currentStatus !== "draft") {
+    throw new ValidationError(
+      `审批申请状态为 ${existingApproval.currentStatus}，只有 draft 状态的申请可以提交`,
+      "currentStatus",
+      "INVALID_STATUS"
+    );
   }
+  updateData.submittedAt = new Date();
 
   // 5. 更新审批申请：根据传入字段更新数据
   const updatedApproval = await prisma.approvalRequest.update({
@@ -376,46 +303,23 @@ export async function submitApprovalRequest(
     },
   });
 
-  // 6. 处理附件（如果提供了附件信息）
-  if (data?.attachments !== undefined) {
-    // 删除旧的附件
-    await prisma.approvalAttachment.deleteMany({
-      where: { requestId: id },
-    });
-
-    // 创建新的附件（如果有）
-    if (data.attachments.length > 0) {
-      await prisma.approvalAttachment.createMany({
-        data: data.attachments.map((att) => ({
-          requestId: id,
-          attachmentType: att.attachmentType,
-          fileName: att.fileName,
-          filePath: att.filePath,
-          fileSize: typeof att.fileSize === 'string' ? BigInt(att.fileSize) : BigInt(att.fileSize || 0),
-          mimeType: att.mimeType || null,
-          uploaderId: existingApproval.applicantId, // 使用申请人的ID作为上传人
-        })),
-      });
-    }
-
-    // 重新查询以包含最新的附件
-    const approvalWithAttachments = await prisma.approvalRequest.findUnique({
-      where: { id },
-      include: {
-        applicant: {
-          select: {
-            id: true,
-            realName: true,
-            username: true,
-          },
+  // 重新查询以包含最新的附件
+  const approvalWithAttachments = await prisma.approvalRequest.findUnique({
+    where: { id },
+    include: {
+      applicant: {
+        select: {
+          id: true,
+          realName: true,
+          username: true,
         },
-        attachments: true,
       },
-    });
+      attachments: true,
+    },
+  });
 
-    if (approvalWithAttachments) {
-      return serialize(approvalWithAttachments);
-    }
+  if (approvalWithAttachments) {
+    return serialize(approvalWithAttachments);
   }
 
   // 7. 将 BigInt 字段转换为字符串，避免序列化错误

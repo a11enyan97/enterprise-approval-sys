@@ -2,7 +2,7 @@
 
 import { Button, Table, Message, Spin } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePathname } from "next/navigation";
 import ConfirmModal from "@/components/business/approval/ApprovalTableClient/ConfirmModal";
@@ -75,11 +75,11 @@ export default function ApprovalTableClient({
   };
   // 查看审批
   const handleView = (record: ApprovalRequestItem) => {
-    router.push(`/approval/info/details?id=${record.id}`);
+    router.push(`/approval/info/details?submissionId=${record.submissionId}&requestId=${record.id}`);
   };
   // 修改审批
   const handleEdit = (record: ApprovalRequestItem) => {
-    router.push(`/approval/info/edit?id=${record.id}`);
+    router.push(`/approval/info/edit?submissionId=${record.submissionId}&requestId=${record.id}`);
   };
 
   // 提交审批 - 显示确认弹窗
@@ -96,9 +96,7 @@ export default function ApprovalTableClient({
 
     try {
       setApprovalStatus((prev) => addIdToStatus(prev, "submittingIds", recordId));
-      const result = await submitApprovalAction(recordId, {
-        currentStatus: "pending",
-      });
+      const result = await submitApprovalAction(recordId);
 
       if (!result.success) {
         throw new Error("error" in result ? result.error : "提交失败");

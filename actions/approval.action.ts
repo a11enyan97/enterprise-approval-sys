@@ -11,7 +11,7 @@ import {
 import { getFormSchema } from "@/services/form-config.service";
 import { handleActionError } from "@/services/_shared/errors";
 import type { CreateApprovalRequestInput, GetApprovalListParams } from "@/types/approval";
-import type { FormSchema } from "@/types/form";
+import type { FormSchema } from "@/types/formBuilder";
 
 /**
  * 创建审批申请
@@ -145,9 +145,9 @@ export async function getApprovalFormSchemaAction(
 /**
  * 提交审批申请
  */
-export async function submitApprovalAction(requestId: string, data: any) {
+export async function submitApprovalAction(requestId: string) {
   try {
-    const approval = await submitApprovalRequest(BigInt(requestId), data);
+    const approval = await submitApprovalRequest(BigInt(requestId));
     return {
       success: true,
       data: approval,

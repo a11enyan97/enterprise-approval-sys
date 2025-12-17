@@ -6,6 +6,7 @@ import { useUserStore } from "@/store/userStore";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { USER_ROLE_OPTIONS } from "@/constants/approvalConfig";
+import { switchUserRoleAction } from "@/actions/auth.action";
 
 const { Header, Sider, Content } = Layout;
 
@@ -16,7 +17,7 @@ export default function AppLayoutClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isApplicant, switchToApplicant, switchToApprover } = useUserStore();
+  const { user, setUser, isApplicant } = useUserStore();
 
   // 根据当前路径计算选中的菜单项
   const selectedKeys = useMemo(() => {
@@ -29,15 +30,14 @@ export default function AppLayoutClient({
   }, [pathname]);
 
   // 身份切换处理
-  const handleRoleChange = (roleValue: string) => {
-    if (roleValue === "applicant") {
-      switchToApplicant();
-    } else if (roleValue === "approver") {
-      switchToApprover();
-    }
+  const handleRoleChange = async (roleValue: string) => {
+    // 1. 服务端设置 Cookie
+    const newUser = await switchUserRoleAction(roleValue as "applicant" | "approver");
+    // 2. 客户端更新 Store
+    setUser(newUser);
+    // 3. 刷新页面
+    router.refresh();
   };
-
-
 
   const dropList = (
     <Menu>

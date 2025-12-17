@@ -5,7 +5,7 @@
  */
 
 import { Empty } from "@arco-design/web-react";
-import { useDroppable } from "@dnd-kit/core";
+import { type UniqueIdentifier, useDroppable } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
 import type { FormField } from "@/types/formBuilder";
 import SortableFieldCard from "@/components/business/formBuilder/SortableFieldCard";
@@ -36,7 +36,7 @@ export default function Canvas({
       ref={setNodeRef}
       className={`min-h-[420px] rounded-lg border bg-gray-50 p-4 ${isOver ? "border-blue-500 bg-blue-50" : "border-dashed border-gray-200"}`}
     >
-      <SortableContext items={fields.map((f) => f._id)}>
+      <SortableContext items={fields.map((f) => f._id as UniqueIdentifier)}>
         {fields.length === 0 && <CanvasPlaceholder />}
         {fields.map((field) => (
           <SortableFieldCard

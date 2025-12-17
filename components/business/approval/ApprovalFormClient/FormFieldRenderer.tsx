@@ -1,11 +1,11 @@
 "use client";
 
 import { Form, Input, DatePicker, TreeSelect, Upload } from "@arco-design/web-react";
-import type { FormFieldConfig } from "@/types/form";
+import type { FormField } from "@/types/formBuilder";
 import type { CascaderOption } from "@/types/departments";
 
 interface FormFieldRendererProps {
-  field: FormFieldConfig;
+  field: FormField;
   isReadOnly: boolean;
   departmentOptions?: CascaderOption[];
   deptLoading?: boolean;

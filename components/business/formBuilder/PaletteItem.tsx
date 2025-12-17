@@ -7,10 +7,10 @@
 import { Tag } from "@arco-design/web-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import type { FieldType } from "@/types/formBuilder";
+import type { FormFieldType } from "@/types/formBuilder";
 
 // 基础组件配置列表（类型/标题/描述），供左侧面板和 DragOverlay 使用
-export const paletteItems: Array<{ type: FieldType; title: string; desc: string }> = [
+export const paletteItems: Array<{ type: FormFieldType; title: string; desc: string }> = [
   { type: "input", title: "单行输入", desc: "文本输入框" },
   { type: "textarea", title: "多行文本", desc: "支持自动换行" },
   { type: "date", title: "日期选择", desc: "YYYY-MM-DD" },
@@ -20,7 +20,7 @@ export const paletteItems: Array<{ type: FieldType; title: string; desc: string 
 ];
 
 interface PaletteItemProps {
-  type: FieldType;
+  type: FormFieldType;
   title: string;
   desc: string;
 }

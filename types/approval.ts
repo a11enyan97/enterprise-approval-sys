@@ -50,6 +50,7 @@ export interface ApprovalAttachmentItem {
  */
 export interface ApprovalRequestItem {
   id: string;
+  submissionId?: string | null;
   requestNo: string;
   projectName: string;
   approvalContent?: string;
@@ -69,6 +70,11 @@ export interface ApprovalRequestItem {
     realName: string;
   };
   attachments?: ApprovalAttachmentItem[];
+  submission?: {
+    id: string;
+    data: Record<string, any>;
+    schemaSnapshot: any;
+  } | null;
 }
 
 /**

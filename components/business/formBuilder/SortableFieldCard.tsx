@@ -8,6 +8,7 @@ import { Button, Tag } from "@arco-design/web-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { FormField } from "@/types/formBuilder";
+import { type UniqueIdentifier } from "@dnd-kit/core";
 
 interface SortableFieldCardProps {
   field: FormField;
@@ -18,7 +19,7 @@ interface SortableFieldCardProps {
 
 export default function SortableFieldCard({ field, isSelected, onSelect, onDelete }: SortableFieldCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: field._id,
+    id: field._id as UniqueIdentifier,
     data: { source: "canvas" },
   });
 
@@ -47,7 +48,7 @@ export default function SortableFieldCard({ field, isSelected, onSelect, onDelet
       data-dnd-id={field._id}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1" onClick={() => onSelect(field._id)}>
+        <div className="flex-1" onClick={() => onSelect(field._id as string)}>
           <div className="flex items-center justify-between">
             <span className="font-medium text-gray-800">{field.label}</span>
             <Tag size="small" color="arcoblue">
@@ -58,7 +59,7 @@ export default function SortableFieldCard({ field, isSelected, onSelect, onDelet
           <div className="mt-1 text-xs text-gray-500">字段 key：{field.key}</div>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <Button size="mini" status="danger" type="text" onClick={() => onDelete(field._id)}>
+          <Button size="mini" status="danger" type="text" onClick={() => onDelete(field._id as string)}>
             删除
           </Button>
           <Button size="mini" type="text" className="cursor-grab text-gray-500" >
