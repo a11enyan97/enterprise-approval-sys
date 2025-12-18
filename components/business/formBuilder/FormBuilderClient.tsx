@@ -24,7 +24,6 @@ export default function FormBuilderClient() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Zustand 全局状态与动作
   const schema = useFormBuilderStore((state) => state.schema);
   const selectedFieldId = useFormBuilderStore((state) => state.selectedFieldId);
   const addField = useFormBuilderStore((state) => state.addField);
@@ -114,7 +113,7 @@ export default function FormBuilderClient() {
   // 右侧属性面板回调：部分更新字段
   const handlePropertyChange = (patch: any) => {
     if (!selectedField) return;
-    updateField(selectedField._id, patch);
+    updateField(selectedField._id as string, patch);
   };
 
   const [metaForm] = Form.useForm();

@@ -4,9 +4,9 @@ import { nanoid } from "nanoid";
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { FieldType, FormField, FormSchema } from "@/types/formBuilder";
+import type { FormFieldType, FormField, FormSchema } from "@/types/formBuilder";
 
-const fieldTemplates: Record<FieldType, Omit<FormField, "_id" | "key">> = {
+const fieldTemplates: Record<FormFieldType, Omit<FormField, "_id" | "key">> = {
   input: {
     type: "input",
     label: "单行输入",
@@ -64,12 +64,13 @@ const fieldTemplates: Record<FieldType, Omit<FormField, "_id" | "key">> = {
 };
 
 const defaultSchema: FormSchema = {
+  key: "default_schema",
   title: "未命名表单",
   description: "拖拽左侧组件到画布，右侧配置字段属性",
   fields: [],
 };
 
-function createField(type: FieldType): FormField {
+function createField(type: FormFieldType): FormField {
   const template = fieldTemplates[type];
   return {
     _id: nanoid(),
@@ -81,7 +82,7 @@ function createField(type: FieldType): FormField {
 export interface FormBuilderState {
   schema: FormSchema;
   selectedFieldId: string | null;
-  addField: (type: FieldType, insertBeforeId?: string) => void;
+  addField: (type: FormFieldType, insertBeforeId?: string) => void;
   moveField: (activeId: string, overId: string) => void;
   selectField: (fieldId: string | null) => void;
   updateField: (fieldId: string, payload: Partial<FormField>) => void;
@@ -95,6 +96,7 @@ const formBuilderStore = createStore<FormBuilderState>()(
     schema: defaultSchema,
     selectedFieldId: null,
 
+    // 将新增的字段插入到指定位置
     addField: (type, insertBeforeId) =>
       set((state) => {
         const field = createField(type);
@@ -107,9 +109,10 @@ const formBuilderStore = createStore<FormBuilderState>()(
         } else {
           state.schema.fields.push(field);
         }
-        state.selectedFieldId = field._id;
+        state.selectedFieldId = field._id as string;
       }),
 
+    // 将指定字段移动到指定位置
     moveField: (activeId, overId) =>
       set((state) => {
         if (activeId === overId) return;
@@ -121,11 +124,13 @@ const formBuilderStore = createStore<FormBuilderState>()(
         fields.splice(newIndex, 0, moved);
       }),
 
+    // 选中指定字段
     selectField: (fieldId) =>
       set((state) => {
         state.selectedFieldId = fieldId;
       }),
 
+    // 更新指定字段的属性
     updateField: (fieldId, payload) =>
       set((state) => {
         const target = state.schema.fields.find((item) => item._id === fieldId);
@@ -163,6 +168,7 @@ const formBuilderStore = createStore<FormBuilderState>()(
         }
       }),
 
+    // 删除指定字段
     removeField: (fieldId) =>
       set((state) => {
         state.schema.fields = state.schema.fields.filter((item) => item._id !== fieldId);
@@ -171,11 +177,13 @@ const formBuilderStore = createStore<FormBuilderState>()(
         }
       }),
 
+    // 更新表单模板的基本信息
     updateMeta: (meta) =>
       set((state) => {
         state.schema = { ...state.schema, ...meta };
       }),
 
+    // 重置表单模板
     reset: () =>
       set(() => ({
         schema: { ...defaultSchema, fields: [] },
@@ -184,8 +192,7 @@ const formBuilderStore = createStore<FormBuilderState>()(
   }))
 );
 
+// 对useStore进行封装，方便在组件中使用
 export const useFormBuilderStore = <T,>(selector: (state: FormBuilderState) => T) =>
   useStore(formBuilderStore, selector);
-
-export { formBuilderStore };
 
