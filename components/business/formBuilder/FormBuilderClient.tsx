@@ -41,7 +41,7 @@ export default function FormBuilderClient() {
   const [activeOverlayWidth, setActiveOverlayWidth] = useState<number | undefined>(undefined);
   
   // 保存相关状态
-  const { user } = useUserStore();
+  const user = useUserStore((state) => state.user);
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveForm] = Form.useForm();
