@@ -1,9 +1,10 @@
+'use client';
 /**
  * 用户状态管理 Store (Zustand)
- * 重构版：不再依赖 localStorage，数据由服务端通过 Cookie 获取后注入
  */
 
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { useStore } from "zustand";
 
 /**
  * 用户信息类型
@@ -19,7 +20,7 @@ export interface UserInfo {
 /**
  * 用户状态 Store
  */
-interface UserStore {
+export interface UserStore {
   user: UserInfo | null;
   setUser: (user: UserInfo) => void;
   isApplicant: () => boolean;
@@ -27,10 +28,13 @@ interface UserStore {
   getRoleLabel: (role: "applicant" | "approver") => string;
 }
 
-export const useUserStore = create<UserStore>((set, get) => ({
+export const userStoreRaw = createStore<UserStore>((set, get) => ({
   user: null, // 初始为空，将由 LayoutClient 接收服务端数据后立即初始化
   setUser: (user) => set({ user }),
   isApplicant: () => get().user?.role === "applicant",
   isApprover: () => get().user?.role === "approver",
   getRoleLabel: (role: "applicant" | "approver") => role === "applicant" ? "申请人" : "审批人",
 }));
+
+export const useUserStore = <T,>(selector: (state: UserStore) => T) =>
+  useStore(userStoreRaw, selector);

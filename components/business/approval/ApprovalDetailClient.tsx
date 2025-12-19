@@ -10,7 +10,7 @@ import { deleteOSSFiles } from "@/actions/oss.action";
 import { uploadAllAttachments } from "@/utils/attachmentUploader";
 import { formatAttachmentsForForm, convertExistingAttachmentsToInput, cleanFormData } from "@/utils/formatUtils";
 import { showErrorMessage, showSuccessMessage } from "@/utils/approvalUtils";
-import { useUserStore } from "@/store/userStore";
+import { useUserStore, type UserStore } from "@/store/useUserStore";
 import type { ApprovalRequestItem, AttachmentInput } from "@/types/approval";
 import type { CascaderOption } from "@/types/departments";
 import type { FormSchema } from "@/types/formBuilder";
@@ -41,7 +41,7 @@ export default function ApprovalDetailClient({
   const [form] = Form.useForm();
   const [saving, setSaving] = useState<boolean>(false);
   const [message, contextHolder] = Message.useMessage();
-  const { user } = useUserStore();
+  const user = useUserStore((state: UserStore) => state.user);
   const [formSchema, setFormSchema] = useState<FormSchema | null>(initialSchema);
   const isReadOnly = pageType === 'details';
 

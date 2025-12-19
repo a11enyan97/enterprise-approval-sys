@@ -1,10 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { Layout, Menu, Avatar, Dropdown } from "@arco-design/web-react";
 import { IconCaretDown } from "@arco-design/web-react/icon";
-import { useUserStore } from "@/store/userStore";
+import { useUserStore, type UserStore, type UserInfo } from "@/store/useUserStore";
 import { useRouter, usePathname } from "next/navigation";
-import { useMemo } from "react";
 import { USER_ROLE_OPTIONS } from "@/constants/approvalConfig";
 import { switchUserRoleAction } from "@/actions/auth.action";
 
@@ -12,12 +12,19 @@ const { Header, Sider, Content } = Layout;
 
 export default function AppLayoutClient({
   children,
+  user: initialUser,
 }: {
   children: React.ReactNode;
+  user: UserInfo;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, setUser, isApplicant } = useUserStore();
+  const storeUser = useUserStore((state: UserStore) => state.user);
+  const setUser = useUserStore((state: UserStore) => state.setUser);
+  
+  // 优先使用 store 中的用户状态（客户端更新后），否则使用初始传入的 props（服务端渲染/首屏）
+  const currentUser = storeUser || initialUser;
+  const isApplicant = currentUser?.role === "applicant";
 
   // 根据当前路径计算选中的菜单项
   const selectedKeys = useMemo(() => {
@@ -35,8 +42,6 @@ export default function AppLayoutClient({
     const newUser = await switchUserRoleAction(roleValue as "applicant" | "approver");
     // 2. 客户端更新 Store
     setUser(newUser);
-    // 3. 刷新页面
-    router.refresh();
   };
 
   const dropList = (
@@ -46,8 +51,8 @@ export default function AppLayoutClient({
           key={role.value}
           onClick={() => handleRoleChange(role.value)}
           style={{
-            backgroundColor: user?.role === role.value ? "#e6f4ff" : "transparent",
-            color: user?.role === role.value ? "#1890ff" : "#000",
+            backgroundColor: currentUser?.role === role.value ? "#e6f4ff" : "transparent",
+            color: currentUser?.role === role.value ? "#1890ff" : "#000",
           }}
         >
           {role.label}
@@ -99,10 +104,10 @@ export default function AppLayoutClient({
             }}
           >
             <Avatar size={32} style={{ backgroundColor: "#3370ff" }}>
-              {user?.realName?.charAt(0) || "用"}
+              {currentUser?.realName?.charAt(0) || "用"}
             </Avatar>
             <span style={{ fontSize: "14px", color: "#374151", fontWeight: 500 }}>
-              {user?.realName || "用户"} ({isApplicant() ? "申请人" : "审批人"})
+              {currentUser?.realName || "用户"} ({isApplicant ? "申请人" : "审批人"})
               <IconCaretDown
                 style={{ marginLeft: "4px", display: "inline-block" }}
               />

@@ -14,13 +14,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 从服务端中获取用户信息
   const user = await getCurrentUserFromCookie();
 
   return (
     <html lang="en">
       <body className="antialiased">
         <UserStoreInitializer user={user} />
-        <AppLayoutClient>{children}</AppLayoutClient>
+        <AppLayoutClient user={user}>{children}</AppLayoutClient>
       </body>
     </html>
   );

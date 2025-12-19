@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { usePathname } from "next/navigation";
 import ConfirmModal from "@/components/business/approval/ApprovalTableClient/ConfirmModal";
 import { submitApprovalAction, approveOrRejectAction, deleteApprovalAction } from "@/actions/approval.action";
-import { useUserStore } from "@/store/userStore";
+import { useUserStore, type UserStore, type UserInfo } from "@/store/useUserStore";
 import type { ApprovalRequestItem, ApprovalRequestListResponse } from "@/types/approval";
 import { getApprovalTableColumns } from "@/components/business/approval/ApprovalTableClient/TableColumn";
 import { removeIdFromStatus, addIdToStatus } from "@/utils/approvalUtils";
@@ -17,12 +17,14 @@ interface ApprovalTableClientProps {
   initialData: ApprovalRequestListResponse;
   initialPage: number;
   initialPageSize: number;
+  user?: UserInfo;
 }
 
 export default function ApprovalTableClient({
   initialData,
   initialPage,
   initialPageSize,
+  user: initialUser,
 }: ApprovalTableClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -49,8 +51,13 @@ export default function ApprovalTableClient({
     record: null,
   });
 
-  // 从全局状态获取用户信息
-  const { user, isApplicant, isApprover } = useUserStore();
+  // 从全局状态获取用户信息（优先使用客户端 Store，服务端渲染使用 Props）
+  const storeUser = useUserStore((state: UserStore) => state.user);
+  const currentUser = storeUser || initialUser || null;
+  
+  // 本地实现角色判断逻辑，确保 SSR 一致性
+  const isApplicant = () => currentUser?.role === "applicant";
+  const isApprover = () => currentUser?.role === "approver";
 
   // 分页变化处理 - 使用 URL 搜索参数
   const handlePageChange = (currentPage: number, currentPageSize?: number) => {
@@ -116,7 +123,7 @@ export default function ApprovalTableClient({
 
   // 审批处理（同意）- 显示确认弹窗
   const handleApprove = (record: ApprovalRequestItem) => {
-    if (!user) {
+    if (!currentUser) {
       Message.error("请先登录");
       return;
     }
@@ -125,7 +132,7 @@ export default function ApprovalTableClient({
 
   // 审批处理（拒绝）- 显示确认弹窗
   const handleReject = (record: ApprovalRequestItem) => {
-    if (!user) {
+    if (!currentUser) {
       Message.error("请先登录");
       return;
     }
@@ -135,7 +142,7 @@ export default function ApprovalTableClient({
   // 确认审批
   const handleConfirmApproval = async () => {
     if (
-      !user ||
+      !currentUser ||
       !activeModal.record ||
       (activeModal.type !== ACTION_TYPES.APPROVE && activeModal.type !== ACTION_TYPES.REJECT)
     ) {
@@ -149,7 +156,7 @@ export default function ApprovalTableClient({
       const result = await approveOrRejectAction(
         recordId,
         approvalAction,
-        user.id
+        currentUser.id
       );
 
       if (!result.success) {
@@ -169,7 +176,7 @@ export default function ApprovalTableClient({
 
   // 删除审批 - 显示确认弹窗
   const handleDelete = (record: ApprovalRequestItem) => {
-    if (!user) {
+    if (!currentUser) {
       Message.error("请先登录");
       return;
     }
@@ -216,7 +223,7 @@ export default function ApprovalTableClient({
 
   // 表格列配置
   const columns = getApprovalTableColumns({
-    user,
+    user: currentUser,
     isApplicant,
     isApprover,
     approvalStatus,

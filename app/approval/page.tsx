@@ -1,5 +1,6 @@
 import { getApprovalRequestList } from "@/services/approval.service";
 import { getDepartmentCascaderOptions } from "@/services/departments.service";
+import { getCurrentUserFromCookie } from "@/actions/auth.action";
 import ApprovalFilterClient from "@/components/business/approval/ApprovalFilterClient";
 import ApprovalTableClient from "@/components/business/approval/ApprovalTableClient";
 
@@ -42,6 +43,8 @@ export default async function ApprovalPage({ searchParams }: ApprovalPageProps) 
   const approvalData = await getApprovalRequestList(queryOptions);
   // 在 Server Component 中获取部门数据
   const departmentOptions = await getDepartmentCascaderOptions();
+  // 获取当前用户
+  const user = await getCurrentUserFromCookie();
 
   return (
     <>
@@ -52,6 +55,7 @@ export default async function ApprovalPage({ searchParams }: ApprovalPageProps) 
         initialData={approvalData}
         initialPage={page}
         initialPageSize={pageSize}
+        user={user}
       />
     </>
   );

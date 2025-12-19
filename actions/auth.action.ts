@@ -1,11 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { type UserInfo } from "@/store/userStore";
+import { type UserInfo } from "@/store/useUserStore";
 
 const COOKIE_NAME = "app_user_info";
 
-// 模拟用户数据（与 Store 中保持一致，未来可对接数据库）
+// 模拟数据库用户数据
 const MOCK_USERS: Record<string, UserInfo> = {
   applicant: {
     id: 5,

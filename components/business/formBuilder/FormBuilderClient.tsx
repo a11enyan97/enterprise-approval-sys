@@ -7,7 +7,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { FormFieldType, FormField } from "@/types/formBuilder";
 import { useFormBuilderStore } from "@/store/useFormBuilderStore";
-import { useUserStore } from "@/store/userStore";
+import { useUserStore } from "@/store/useUserStore";
 import { createFormTemplateAction } from "@/actions/form.action";
 import PropertyPanel from "@/components/business/formBuilder/PropertyPanel";
 import Canvas from "@/components/business/formBuilder/Canvas";

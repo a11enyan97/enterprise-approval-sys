@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { useUserStore, type UserInfo } from "@/store/userStore";
+import { userStoreRaw, type UserInfo } from "@/store/useUserStore";
 
 /**
  * 状态初始化组件
@@ -12,8 +12,7 @@ export default function UserStoreInitializer({ user }: { user: UserInfo }) {
   const initialized = useRef(false);
   
   if (!initialized.current) {
-    // 直接更新 Store 状态，这会在组件渲染前发生
-    useUserStore.setState({ user });
+    userStoreRaw.setState({ user });
     initialized.current = true;
   }
   
