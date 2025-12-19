@@ -1,21 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Layout, Menu, Avatar, Dropdown } from "@arco-design/web-react";
 import { IconCaretDown } from "@arco-design/web-react/icon";
 import { useUserStore, type UserStore, type UserInfo } from "@/store/useUserStore";
 import { useRouter, usePathname } from "next/navigation";
 import { USER_ROLE_OPTIONS } from "@/constants/approvalConfig";
 import { switchUserRoleAction } from "@/actions/auth.action";
+import { getCurrentUserMenusAction } from "@/actions/user.action";
+import type { MenuItem } from "@/services/user.service";
 
 const { Header, Sider, Content } = Layout;
 
 export default function AppLayoutClient({
   children,
   user: initialUser,
+  menus: initialMenus,
 }: {
   children: React.ReactNode;
   user: UserInfo;
+  menus: MenuItem[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -26,15 +30,22 @@ export default function AppLayoutClient({
   const currentUser = storeUser || initialUser;
   const isApplicant = currentUser?.role === "applicant";
 
+  const [menus, setMenus] = useState<MenuItem[]>(initialMenus);
+
+  // 监听用户角色变化，重新获取菜单权限
+  useEffect(() => {
+    if (currentUser?.role) {
+      getCurrentUserMenusAction().then(fetchedMenus => {
+         setMenus(fetchedMenus);
+      });
+    }
+  }, [currentUser?.role]);
+
   // 根据当前路径计算选中的菜单项
   const selectedKeys = useMemo(() => {
-    if (pathname?.startsWith("/approval")) {
-      return ["approval"];
-    } else if (pathname?.startsWith("/formBuilder")) {
-      return ["formBuilder"];
-    }
-    return [];
-  }, [pathname]);
+    const currentMenu = menus.find(m => pathname?.startsWith(m.path));
+    return currentMenu ? [currentMenu.key] : [];
+  }, [pathname, menus]);
 
   // 身份切换处理
   const handleRoleChange = async (roleValue: string) => {
@@ -63,10 +74,9 @@ export default function AppLayoutClient({
 
   // 菜单点击处理
   const handleMenuClick = (key: string) => {
-    if (key === "approval") {
-      router.push("/approval");
-    } else if (key === "formBuilder") {
-      router.push("/formBuilder");
+    const targetMenu = menus.find(m => m.key === key);
+    if (targetMenu) {
+      router.push(targetMenu.path);
     }
   };
 
@@ -128,8 +138,9 @@ export default function AppLayoutClient({
             onClickMenuItem={handleMenuClick}
             style={{ border: "none", height: "100%" }}
           >
-            <Menu.Item key="approval">审批</Menu.Item>
-            <Menu.Item key="formBuilder">表单配置</Menu.Item>
+            {menus.map(menu => (
+              <Menu.Item key={menu.key}>{menu.label}</Menu.Item>
+            ))}
           </Menu>
         </Sider>
         <Content

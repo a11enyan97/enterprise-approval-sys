@@ -3,6 +3,7 @@ import "./globals.css";
 import AppLayoutClient from "@/components/common/LayoutClient";
 import { getCurrentUserFromCookie } from "@/actions/auth.action";
 import UserStoreInitializer from "@/components/common/UserStoreInitializer";
+import { getMenusByRole } from "@/services/user.service";
 
 export const metadata: Metadata = {
   title: "企业审批系统",
@@ -16,12 +17,14 @@ export default async function RootLayout({
 }>) {
   // 从服务端中获取用户信息
   const user = await getCurrentUserFromCookie();
+  // 获取用户菜单权限
+  const menus = getMenusByRole(user.role);
 
   return (
     <html lang="en">
       <body className="antialiased">
         <UserStoreInitializer user={user} />
-        <AppLayoutClient user={user}>{children}</AppLayoutClient>
+        <AppLayoutClient user={user} menus={menus}>{children}</AppLayoutClient>
       </body>
     </html>
   );
