@@ -225,7 +225,13 @@ export default function ApprovalDetailClient({
           <div className="text-lg font-semibold text-gray-800 m-0">
             {PageTypeEnum[pageType as keyof typeof PageTypeEnum] || '审批详情页'}
           </div>
-          <Button type="text" onClick={() => router.push('/approval')}>
+          <Button type="text" onClick={() => {
+             if (window.history.length > 1) {
+               router.back();
+             } else {
+               router.push('/approval');
+             }
+          }}>
             <IconArrowLeft />
             返回
           </Button>

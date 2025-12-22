@@ -2,7 +2,7 @@
 
 import { Button, Table, Message, Spin } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePathname } from "next/navigation";
 import ConfirmModal from "@/components/business/approval/ApprovalTableClient/ConfirmModal";
@@ -70,10 +70,42 @@ export default function ApprovalTableClient({
   };
 
   // 刷新数据
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     startTransition(() => {
       router.refresh();
     });
+  }, [router]);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  // 通用操作处理函数：封装 API 调用、状态管理、错误处理和数据刷新
+  const handleAction = async (
+    recordId: string,
+    statusKey: keyof typeof approvalStatus,
+    actionFn: () => Promise<{ success: boolean; error?: string }>,
+    successMsg: string,
+    errorMsg: string
+  ) => {
+    try {
+      setApprovalStatus((prev) => addIdToStatus(prev, statusKey, recordId));
+      const result = await actionFn();
+
+      if (!result.success) {
+        throw new Error(result.error || errorMsg);
+      }
+
+      Message.success(successMsg);
+      setActiveModal({ type: null, record: null });
+      // 操作成功后刷新列表
+      refreshData();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : errorMsg;
+      Message.error(errorMessage);
+    } finally {
+      setApprovalStatus((prev) => removeIdFromStatus(prev, statusKey, recordId));
+    }
   };
 
   // 新建审批
@@ -96,28 +128,19 @@ export default function ApprovalTableClient({
     }
     setActiveModal({ type: ACTION_TYPES.SUBMIT, record });
   };
+  
   // 确认提交
   const handleConfirmSubmit = async () => {
     if (activeModal.type !== ACTION_TYPES.SUBMIT || !activeModal.record) return;
     const recordId = activeModal.record.id;
 
-    try {
-      setApprovalStatus((prev) => addIdToStatus(prev, "submittingIds", recordId));
-      const result = await submitApprovalAction(recordId);
-
-      if (!result.success) {
-        throw new Error("error" in result ? result.error : "提交失败");
-      }
-
-      Message.success("提交成功");
-      setActiveModal({ type: null, record: null });
-      refreshData();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "提交失败";
-      Message.error(errorMessage);
-    } finally {
-      setApprovalStatus((prev) => removeIdFromStatus(prev, "submittingIds", recordId));
-    }
+    await handleAction(
+      recordId,
+      "submittingIds",
+      () => submitApprovalAction(recordId),
+      "提交成功",
+      "提交失败"
+    );
   };
 
 
@@ -150,28 +173,15 @@ export default function ApprovalTableClient({
     }
     const approvalAction = activeModal.type;
     const recordId = activeModal.record.id;
+    const actionText = approvalAction === "approve" ? "审批通过" : "审批拒绝";
 
-    try {
-      setApprovalStatus((prev) => addIdToStatus(prev, "approvingIds", recordId));
-      const result = await approveOrRejectAction(
-        recordId,
-        approvalAction,
-        currentUser.id
-      );
-
-      if (!result.success) {
-        throw new Error("error" in result ? result.error : "审批操作失败");
-      }
-
-      Message.success(approvalAction === "approve" ? "审批通过" : "审批拒绝");
-      setActiveModal({ type: null, record: null });
-      refreshData();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "审批操作失败";
-      Message.error(errorMessage);
-    } finally {
-      setApprovalStatus((prev) => removeIdFromStatus(prev, "approvingIds", recordId));
-    }
+    await handleAction(
+      recordId,
+      "approvingIds",
+      () => approveOrRejectAction(recordId, approvalAction, currentUser.id),
+      actionText,
+      "审批操作失败"
+    );
   };
 
   // 删除审批 - 显示确认弹窗
@@ -182,28 +192,19 @@ export default function ApprovalTableClient({
     }
     setActiveModal({ type: ACTION_TYPES.DELETE, record });
   };
+  
   // 确认删除
   const handleConfirmDelete = async () => {
     if (activeModal.type !== ACTION_TYPES.DELETE || !activeModal.record) return;
     const recordId = activeModal.record.id;
 
-    try {
-      setApprovalStatus((prev) => addIdToStatus(prev, "deletingIds", recordId));
-      const result = await deleteApprovalAction(recordId);
-
-      if (!result.success) {
-        throw new Error("error" in result ? result.error : "删除失败");
-      }
-
-      Message.success("删除成功");
-      setActiveModal({ type: null, record: null });
-      refreshData();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "删除失败";
-      Message.error(errorMessage);
-    } finally {
-      setApprovalStatus((prev) => removeIdFromStatus(prev, "deletingIds", recordId));
-    }
+    await handleAction(
+      recordId,
+      "deletingIds",
+      () => deleteApprovalAction(recordId),
+      "删除成功",
+      "删除失败"
+    );
   };
 
   // 关闭弹窗
@@ -285,4 +286,3 @@ export default function ApprovalTableClient({
     </>
   );
 }
-
