@@ -1,8 +1,17 @@
 "use client";
 
-import { Form, Input, DatePicker, TreeSelect, Upload } from "@arco-design/web-react";
+import React from "react";
 import type { FormField } from "@/types/formBuilder";
 import type { CascaderOption } from "@/types/departments";
+import {
+  InputRenderer,
+  TextAreaRenderer,
+  DateRenderer,
+  TreeSelectRenderer,
+  ImageUploadRenderer,
+  ExcelUploadRenderer,
+  type RendererProps
+} from "./renderers";
 
 interface FormFieldRendererProps {
   field: FormField;
@@ -12,128 +21,47 @@ interface FormFieldRendererProps {
   customRequest?: (option: any) => Promise<void>;
 }
 
+// --- 核心工厂模式实现 ---
+
+// 1. 定义组件映射表 (Strategy Map)
+// Key: Schema 中的 type 类型
+// Value: 对应的渲染组件
+const FIELD_RENDERER_MAP: Record<string, React.FC<RendererProps>> = {
+  input: InputRenderer,
+  textarea: TextAreaRenderer,
+  date: DateRenderer,
+  treeSelect: TreeSelectRenderer,
+  uploadImage: ImageUploadRenderer,
+  uploadTable: ExcelUploadRenderer,
+};
+
 /**
  * 根据字段配置渲染对应的表单字段组件
  */
-export function renderFormField({
-  field,
-  isReadOnly,
-  departmentOptions = [],
-  deptLoading = false,
-  customRequest,
-}: FormFieldRendererProps) {
+export function renderFormField(props: FormFieldRendererProps) {
+  const { field } = props;
+
+  // 1. 提取通用属性
   const commonProps = {
     label: field.label,
     field: field.key,
     rules: field.rules || (field.required ? [{ required: true, message: `${field.label}为必填项` }] : []),
   };
 
-  switch (field.type) {
-    case "input":
-      return (
-        <Form.Item key={field.key} {...commonProps}>
-          <Input
-            placeholder={field.placeholder}
-            disabled={isReadOnly}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    case "textarea":
-      return (
-        <Form.Item key={field.key} {...commonProps}>
-          <Input.TextArea
-            placeholder={field.placeholder}
-            disabled={isReadOnly}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    case "date":
-      return (
-        <Form.Item key={field.key} {...commonProps}>
-          <DatePicker
-            placeholder={field.placeholder}
-            disabled={isReadOnly}
-            style={{ width: '100%' }}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    case "treeSelect":
-      return (
-        <Form.Item key={field.key} {...commonProps}>
-          <TreeSelect
-            treeData={departmentOptions}
-            placeholder={field.placeholder}
-            allowClear
-            style={{ width: "100%" }}
-            disabled={isReadOnly}
-            loading={deptLoading}
-            fieldNames={{
-              title: "title",
-              key: "key",
-              children: "children",
-            }}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    case "uploadImage":
-      return (
-        <Form.Item
-          key={field.key}
-          label={field.label}
-          field={field.key}
-          triggerPropName="fileList"
-          extra={
-            <div style={{ fontSize: '12px', color: '#86909c', marginTop: '4px' }}>
-              支持格式：JPG、PNG、GIF、WebP，最多上传 3 张
-            </div>
-          }
-        >
-          <Upload
-            multiple
-            imagePreview
-            listType="picture-card"
-            customRequest={customRequest}
-            disabled={isReadOnly}
-            accept={field.props?.accept || "image/jpeg,image/jpg,image/png,image/gif,image/webp"}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    case "uploadTable":
-      return (
-        <Form.Item
-          key={field.key}
-          label={field.label}
-          field={field.key}
-          triggerPropName="fileList"
-          extra={
-            <div style={{ fontSize: '12px', color: '#86909c', marginTop: '4px' }}>
-              请根据
-              <a
-                href="/template.xlsx"
-                download="template.xlsx"
-                style={{ color: '#165dff', textDecoration: 'none', margin: '0 4px' }}
-              >
-                表格模板
-              </a>
-              上传文件
-            </div>
-          }
-        >
-          <Upload
-            customRequest={customRequest}
-            accept='.xlsx,.xls'
-            disabled={isReadOnly}
-            {...(field.props || {})}
-          />
-        </Form.Item>
-      );
-    default:
-      return null;
-  }
-}
+  // 2. 从映射表获取渲染组件（工厂分发）
+  const SpecificRenderer = FIELD_RENDERER_MAP[field.type];
 
+  if (!SpecificRenderer) {
+    console.warn(`[FormFieldRenderer] No renderer found for field type: ${field.type}`);
+    return null;
+  }
+
+  // 3. 执行渲染
+  return (
+    <SpecificRenderer
+      key={field.key}
+      {...props}
+      commonProps={commonProps}
+    />
+  );
+}
