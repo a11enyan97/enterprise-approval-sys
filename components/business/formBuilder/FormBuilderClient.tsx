@@ -19,9 +19,7 @@ const { Title, Paragraph } = Typography;
 export default function FormBuilderClient() {
   const sensors = useSensors(
     // 鼠标传感器：拖拽距离≥4px才激活，避免误触
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    // 键盘传感器：支持方向键拖拽排序
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
 
   const schema = useFormBuilderStore((state) => state.schema);
@@ -228,8 +226,8 @@ export default function FormBuilderClient() {
             <Card size="small" title="画布">
               <Canvas
                 fields={fields}
-                onSelectAction={(id) => selectField(id)}
-                onDeleteAction={(id) => removeField(id)}
+                onSelectAction={selectField}
+                onDeleteAction={removeField}
                 selectedId={selectedFieldId}
               />
             </Card>
