@@ -8,21 +8,29 @@ import { memo } from "react";
 import { Button, Tag } from "@arco-design/web-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { FormField } from "@/types/formBuilder";
 import { type UniqueIdentifier } from "@dnd-kit/core";
+import { useFormBuilderStore } from "@/store/useFormBuilderStore";
 
 interface SortableFieldCardProps {
-  field: FormField;
+  id: string;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export default memo(function SortableFieldCard({ field, isSelected, onSelect, onDelete }: SortableFieldCardProps) {
+export default memo(function SortableFieldCard({ id, isSelected, onSelect, onDelete }: SortableFieldCardProps) {
+  // 性能优化：组件自己订阅数据
+  // 只有当该 id 对应的字段数据发生变化时，才会触发重渲染
+  const field = useFormBuilderStore((state) => 
+    state.schema.fields.find((f) => f._id === id)
+  );
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: field._id as UniqueIdentifier,
+    id: id as UniqueIdentifier,
     data: { source: "canvas" },
   });
+
+  if (!field) return null;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -71,4 +79,3 @@ export default memo(function SortableFieldCard({ field, isSelected, onSelect, on
     </div>
   );
 });
-

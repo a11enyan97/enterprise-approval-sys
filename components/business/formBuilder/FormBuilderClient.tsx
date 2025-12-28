@@ -225,7 +225,6 @@ export default function FormBuilderClient() {
           <div className="md:col-span-6 space-y-3">
             <Card size="small" title="画布">
               <Canvas
-                fields={fields}
                 onSelectAction={selectField}
                 onDeleteAction={removeField}
                 selectedId={selectedFieldId}

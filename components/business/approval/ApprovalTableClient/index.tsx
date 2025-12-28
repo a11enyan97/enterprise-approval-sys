@@ -69,7 +69,9 @@ export default function ApprovalTableClient({
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // 刷新数据
+  // 使用路由刷新来重新获取列表数据的原因：
+  // 1. 数据源来自于服务端组件，客户端组件本身没有“获取数据的能力”
+  // 2. 客户端专门写一套useEffect + fetch的方式针对这个组件是冗余的
   const refreshData = useCallback(() => {
     startTransition(() => {
       router.refresh();
