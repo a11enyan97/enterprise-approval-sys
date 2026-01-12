@@ -6,15 +6,7 @@
 
 import { getOSSTokenAction } from "@/actions/oss.action";
 import type { OSSTokenResponse, OSSUploadResult } from "@/types/oss";
-
-/**
- * 类型守卫：检查是否为成功响应
- */
-function isOSSTokenSuccess(
-  response: OSSTokenResponse
-): response is Extract<OSSTokenResponse, { success: true }> {
-  return response.success === true;
-}
+import { isOSSTokenSuccess } from "@/utils/guards";
 
 /**
  * 上传文件到 OSS（使用预签名URL直传，文件直接从客户端上传到OSS）

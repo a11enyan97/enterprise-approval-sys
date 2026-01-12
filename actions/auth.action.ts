@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { type UserInfo } from "@/store/useUserStore";
 import { getUserByRoleService } from "@/services/user.service";
+import { isUserInfo } from "@/utils/guards";
 
 const COOKIE_NAME = "app_user_info";
 
@@ -38,10 +39,14 @@ export async function switchUserRoleAction(role: "applicant" | "approver") {
 export async function getCurrentUserFromCookie(): Promise<UserInfo> {
   const cookieStore = await cookies();
   const cookie = cookieStore.get(COOKIE_NAME);
-  
+
   if (cookie?.value) {
     try {
-      return JSON.parse(cookie.value) as UserInfo;
+      const parsed = JSON.parse(cookie.value);
+      if (isUserInfo(parsed)) {
+        return parsed;
+      }
+      console.error("Cookie 数据格式无效", parsed);
     } catch (e) {
       console.error("Cookie 解析失败", e);
     }

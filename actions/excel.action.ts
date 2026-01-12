@@ -2,6 +2,7 @@
 
 import { validateExcelFile } from "@/services/excel-validator.service";
 import { handleActionError } from "@/services/_shared/errors";
+import { isFile } from "@/utils/guards";
 
 /**
  * Excel 文件校验结果响应
@@ -26,12 +27,12 @@ export async function validateExcelAction(
   formData: FormData
 ): Promise<ExcelValidationResponse> {
   try {
-    const file = formData.get("file") as File | null;
+    const file = formData.get("file");
 
-    if (!file) {
+    if (!isFile(file)) {
       return {
         success: false,
-        error: "未找到上传的文件",
+        error: "未找到上传的文件或文件格式不正确",
       };
     }
 
