@@ -1,183 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Form, Input, Space, Tag, Typography, Message, Modal } from "@arco-design/web-react";
-import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors, KeyboardSensor } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import type { FormFieldType, FormField } from "@/types/formBuilder";
-import { useFormBuilderStore } from "@/store/useFormBuilderStore";
-import { useUserStore } from "@/store/useUserStore";
-import { createFormTemplateAction } from "@/actions/form.action";
+import { Button, Card, Form, Input, Space, Tag, Typography, Modal } from "@arco-design/web-react";
+import { DndContext, DragOverlay, pointerWithin } from "@dnd-kit/core";
 import PropertyPanel from "@/components/business/formBuilder/PropertyPanel";
 import Canvas from "@/components/business/formBuilder/Canvas";
 import PaletteItem, { paletteItems } from "@/components/business/formBuilder/PaletteItem";
-import { showSuccessMessage } from "@/utils/approvalUtils";
+import { useFormBuilderLogic } from "@/hooks/business/formBuilder/useFormBuilderLogic";
 
 const { Title, Paragraph } = Typography;
 
 export default function FormBuilderClient() {
-  const sensors = useSensors(
-    // 鼠标传感器：拖拽距离≥4px才激活，避免误触
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  );
-
-  const schema = useFormBuilderStore((state) => state.schema);
-  const selectedFieldId = useFormBuilderStore((state) => state.selectedFieldId);
-  const addField = useFormBuilderStore((state) => state.addField);
-  const moveField = useFormBuilderStore((state) => state.moveField);
-  const selectField = useFormBuilderStore((state) => state.selectField);
-  const updateField = useFormBuilderStore((state) => state.updateField);
-  const removeField = useFormBuilderStore((state) => state.removeField);
-  const updateMeta = useFormBuilderStore((state) => state.updateMeta);
-  const reset = useFormBuilderStore((state) => state.reset);
-
-  const fields = schema.fields;
-  const [message, contextHolder] = Message.useMessage();
-  const selectedField = useMemo(() => fields.find((item: FormField) => item._id === selectedFieldId), [fields, selectedFieldId]);
-  const [activeField, setActiveField] = useState<FormField | null>(null);
-  const [activeOverlayWidth, setActiveOverlayWidth] = useState<number | undefined>(undefined);
+  const { state, methods } = useFormBuilderLogic();
   
-  // 保存相关状态
-  const user = useUserStore((state) => state.user);
-  const [saveModalVisible, setSaveModalVisible] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveForm] = Form.useForm();
+  const { 
+    sensors, schema, fields, selectedFieldId, selectedField, 
+    activeField, activeOverlayWidth, contextHolder, metaForm, 
+    saveForm, saveModalVisible, saving 
+  } = state;
 
-  // 拖拽开始：记录拖拽影子；画布内保持原宽度，Palette 使用模板预览
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const activeSource = active.data?.current?.source;
-    if (activeSource === "canvas") {
-      // 画布的渲染影子容器
-      const found = fields.find((item: FormField) => item._id === active.id);
-      setActiveField(found || null);
-      const el = typeof document !== "undefined"
-        ? (document.querySelector(`[data-dnd-id="${active.id}"]`) as HTMLElement | null)
-        : null;
-      const width = el?.getBoundingClientRect().width;
-      setActiveOverlayWidth(width);
-    } else {
-      // Palette 的渲染影子容器
-      const type = active.data?.current?.fieldType as FormFieldType | undefined;
-      if (type) {
-        const template = paletteItems.find((item) => item.type === type);
-        setActiveField({
-          _id: "preview",
-          key: `${type}-preview`,
-          type,
-          label: template?.title || "新字段",
-          required: false,
-          placeholder: template?.desc || "",
-          props: {},
-          rules: [],
-        });
-        setActiveOverlayWidth(undefined);
-      } else {
-        setActiveField(null);
-        setActiveOverlayWidth(undefined);
-      }
-    }
-  };
-
-  // 拖拽结束：Palette -> 画布新增；画布内部排序
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveField(null);
-    setActiveOverlayWidth(undefined);
-    
-    // 如果没有落点，直接返回（拖到画布外）
-    if (!over) return;
-
-    const overId = String(over.id);
-    const activeSource = active.data?.current?.source;
-    
-    if (activeSource === "palette") {
-      const type = active.data?.current?.fieldType as FormFieldType;
-      const isCanvasContainer = overId === "canvas";
-      
-      if (isCanvasContainer) {
-        addField(type, overId);
-      }
-      return;
-    }
-
-    // 画布内部排序：只有当拖到不同位置时才移动
-    if (active.id !== over.id) {
-      moveField(String(active.id), overId);
-    }
-  };
-
-  // 右侧属性面板回调：部分更新字段
-  const handlePropertyChange = (patch: any) => {
-    if (!selectedField) return;
-    updateField(selectedField._id as string, patch);
-  };
-
-  const [metaForm] = Form.useForm();
-
-  useEffect(() => {
-    metaForm.setFieldsValue({
-      title: schema.title,
-      description: schema.description,
-    });
-  }, [schema.title, schema.description, metaForm]);
-
-  // 保存表单模板
-  const handleSave = async () => {
-    if (!user) {
-      Message.error("请先登录");
-      return;
-    }
-
-    if (fields.length === 0) {
-      Message.warning("请至少添加一个字段");
-      return;
-    }
-
-    setSaveModalVisible(true);
-    // 初始化保存表单：使用 schema 的 title 作为默认 name，生成默认 key
-    saveForm.setFieldsValue({
-      key: schema.title ? `form_${schema.title.toLowerCase().replace(/\s+/g, "_")}` : "",
-      name: schema.title || "未命名表单",
-      description: schema.description || "",
-    });
-  };
-
-  // 确认保存
-  const handleConfirmSave = async () => {
-    try {
-      const values = await saveForm.validate();
-      if (!values.key || !values.name) {
-        Message.error("请填写表单 key 和名称");
-        return;
-      }
-
-      setSaving(true);
-      const result = await createFormTemplateAction({
-        key: values.key,
-        name: values.name,
-        description: values.description,
-        schema: schema,
-        createdBy: user?.id as number,
-        isPublished: false, // 默认不发布
-      });
-
-      if (!result.success) {
-        throw new Error("error" in result ? result.error : "保存失败");
-      }
-
-      setSaveModalVisible(false);
-      showSuccessMessage(message, "保存成功", () => {
-        saveForm.resetFields();
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "保存失败";
-      Message.error(errorMessage);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { 
+    reset, setSaveModalVisible, updateMeta, selectField, 
+    removeField, handleDragStart, handleDragEnd, handlePropertyChange, 
+    handleSave, handleConfirmSave 
+  } = methods;
 
   return (
     <div className="space-y-4">
@@ -209,7 +54,7 @@ export default function FormBuilderClient() {
         collisionDetection={pointerWithin}
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
-        onDragCancel={() => setActiveField(null)}
+        onDragCancel={() => methods.handleDragEnd({ active: { id: '' } as any, over: null } as any)} // Hack to clear active
       >
         <div className="grid gap-4 md:grid-cols-12">
           <div className="md:col-span-3 space-y-3">
@@ -316,4 +161,3 @@ export default function FormBuilderClient() {
     </div>
   );
 }
-

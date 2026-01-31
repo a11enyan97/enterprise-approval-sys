@@ -11,6 +11,8 @@ export interface RendererProps {
   departmentOptions?: CascaderOption[];
   deptLoading?: boolean;
   customRequest?: (option: any) => Promise<void>;
+  /** 联动产生的 props（如 disabledDate），由表单 useWatch 计算传入 */
+  linkageProps?: Record<string, unknown>;
 }
 
 // Input Renderer
@@ -35,14 +37,20 @@ export const TextAreaRenderer: React.FC<RendererProps> = ({ field, isReadOnly, c
   </Form.Item>
 );
 
-// Date Renderer
-export const DateRenderer: React.FC<RendererProps> = ({ field, isReadOnly, commonProps }) => (
+// Date Renderer（支持联动：linkageProps.disabledDate 限制可选日期范围）
+export const DateRenderer: React.FC<RendererProps> = ({
+  field,
+  isReadOnly,
+  commonProps,
+  linkageProps,
+}) => (
   <Form.Item key={field.key} {...commonProps}>
     <DatePicker
       placeholder={field.placeholder}
       disabled={isReadOnly}
-      style={{ width: '100%' }}
+      style={{ width: "100%" }}
       {...(field.props || {})}
+      {...(linkageProps as any)}
     />
   </Form.Item>
 );

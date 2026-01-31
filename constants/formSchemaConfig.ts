@@ -76,6 +76,8 @@ export const approvalCreateSchema: FormSchema = {
       props: {
         accept: ".xlsx,.xls",
       },
+      // 复杂表单联动：仅当审批项目包含「预算」时显示且必填
+      visibleWhen: { field: "projectName", op: "includes", value: "预算" },
     },
   ],
 };
