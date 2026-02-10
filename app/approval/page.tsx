@@ -3,7 +3,6 @@ import { getDepartmentCascaderOptions } from "@/services/departments.service";
 import { getCurrentUserFromCookie } from "@/actions/auth.action";
 import ApprovalFilterClient from "@/components/business/approval/ApprovalFilterClient";
 import ApprovalTableClient from "@/components/business/approval/ApprovalTableClient";
-
 import type { GetApprovalListParams } from "@/types/approval";
 
 interface ApprovalPageProps {

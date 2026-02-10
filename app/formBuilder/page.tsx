@@ -1,4 +1,4 @@
-import FormBuilderClient from "@/components/business/formBuilder/FormBuilderClient";
+import FormBuilderClient from "@/components/business/formBuilder";
 
 export default function FormBuilderPage() {
   return <FormBuilderClient />;
