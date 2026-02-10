@@ -70,6 +70,12 @@ const defaultSchema: FormSchema = {
   fields: [],
 };
 
+/**
+ * 创建字段
+ * 
+ * @param type 字段类型
+ * @returns 字段
+ */
 function createField(type: FormFieldType): FormField {
   const template = fieldTemplates[type];
   return {
@@ -96,7 +102,13 @@ const formBuilderStore = createStore<FormBuilderState>()(
     schema: defaultSchema,
     selectedFieldId: null,
 
-    // 将新增的字段插入到指定位置
+    /**
+     * 新增的字段到指定位置
+     * 
+     * @param type 新增字段的类型
+     * @param insertBeforeId 插入位置的字段ID
+     * @returns 
+     */
     addField: (type, insertBeforeId) =>
       set((state) => {
         const field = createField(type);
@@ -112,7 +124,13 @@ const formBuilderStore = createStore<FormBuilderState>()(
         state.selectedFieldId = field._id as string;
       }),
 
-    // 将指定字段移动到指定位置
+    /**
+     * 对画布中的字段进行排序
+     * 
+     * @param activeId 当前拖拽的字段ID
+     * @param overId 目标位置的字段ID
+     * @returns 
+     */
     moveField: (activeId, overId) =>
       set((state) => {
         if (activeId === overId) return;
@@ -195,4 +213,7 @@ const formBuilderStore = createStore<FormBuilderState>()(
 // 对useStore进行封装，方便在组件中使用
 export const useFormBuilderStore = <T,>(selector: (state: FormBuilderState) => T) =>
   useStore(formBuilderStore, selector);
+
+/** 在非 React 回调中读取最新 state（如 DnD 回调、保存时取 schema），避免为读一次数而订阅整棵 schema */
+export const getFormBuilderState = () => formBuilderStore.getState();
 
