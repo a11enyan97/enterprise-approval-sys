@@ -4,7 +4,7 @@ import { getDepartmentCascaderOptions } from "@/services/departments.service";
 import { getFormTemplateByKeyAction } from "@/actions/form.action";
 import { getApprovalFormSchemaAction } from "@/actions/approval.action";
 import type { FormSchema } from "@/types/formBuilder";
-import ApprovalDetailClient from "@/components/business/approval/ApprovalDetailClient";
+import ApprovalDetailClient from "@/components/business/approval/ApprovalDetail";
 
 interface ApprovalDetailPageProps {
   params: Promise<{ pageType: string; formKey?: string }>;

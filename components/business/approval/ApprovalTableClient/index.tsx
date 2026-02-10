@@ -2,7 +2,7 @@
 
 import { Button, Table, Message, Spin } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePathname } from "next/navigation";
 import ConfirmModal from "@/components/business/approval/ApprovalTableClient/ConfirmModal";

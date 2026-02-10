@@ -76,7 +76,7 @@ export default function ApprovalDetailClient({
         showErrorMessage(message, "表单数据不存在");
       }
     }
-  }, [approvalDetail, form, formSchema]);
+  }, [approvalDetail, form, formSchema, message]);
 
   // 保存处理
   const handleSave = async () => {
@@ -162,7 +162,7 @@ export default function ApprovalDetailClient({
         // 更新表单和审批请求
         result = await updateFormSubmissionWithApprovalAction(targetSubmissionId, {
             data: cleanedValues,
-            schema: formSchema as any,
+            schema: formSchema as FormSchema,
             attachments: allAttachments,
             updatedBy: user?.id as number,
         });
@@ -185,7 +185,7 @@ export default function ApprovalDetailClient({
   };
 
   // 自定义上传函数：不立即上传，只保存文件到本地，等待用户点击保存时统一上传
-  const customRequest = async (option: any) => {
+  const customRequest = async (option: {onSuccess: {name: string, originFile: File}, file: File}) => {
     const { onSuccess, file } = option;
     
       // 图片格式验证
