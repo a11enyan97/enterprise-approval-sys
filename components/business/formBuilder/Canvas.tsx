@@ -1,13 +1,16 @@
 "use client";
 
-/** 
+/**
  * 画布区域：显示表单字段卡片，支持拖拽排序与删除
+ * 按需订阅 store（仅 fields / selectedId / selectField / removeField），
+ * 改表单标题、Schema 预览等不会触发画布重渲染；无需再靠 React.memo 挡兄弟更新
  */
 
+import { memo } from "react";
 import { Empty } from "@arco-design/web-react";
 import { type UniqueIdentifier, useDroppable } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
-import type { FormField } from "@/types/formBuilder";
+import { useFormBuilderStore } from "@/store/useFormBuilderStore";
 import SortableFieldCard from "@/components/business/formBuilder/SortableFieldCard";
 
 function CanvasPlaceholder() {
@@ -18,17 +21,12 @@ function CanvasPlaceholder() {
   );
 }
 
-export default function Canvas({
-  fields,
-  onSelectAction,
-  onDeleteAction,
-  selectedId,
-}: {
-  fields: FormField[];
-  onSelectAction: (id: string) => void;
-  onDeleteAction: (id: string) => void;
-  selectedId: string | null;
-}) {
+function CanvasInner() {
+  const fields = useFormBuilderStore((state) => state.schema.fields);
+  const selectedId = useFormBuilderStore((state) => state.selectedFieldId);
+  const selectField = useFormBuilderStore((state) => state.selectField);
+  const removeField = useFormBuilderStore((state) => state.removeField);
+
   const { setNodeRef, isOver } = useDroppable({ id: "canvas", data: { source: "canvas" } });
 
   return (
@@ -43,8 +41,8 @@ export default function Canvas({
             key={field._id}
             field={field}
             isSelected={selectedId === field._id}
-            onSelect={onSelectAction}
-            onDelete={onDeleteAction}
+            onSelect={selectField}
+            onDelete={removeField}
           />
         ))}
       </SortableContext>
@@ -52,3 +50,4 @@ export default function Canvas({
   );
 }
 
+export default memo(CanvasInner);

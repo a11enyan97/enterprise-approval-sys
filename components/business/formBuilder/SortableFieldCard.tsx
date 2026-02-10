@@ -2,8 +2,10 @@
 
 /** 
  * 可拖拽的字段卡片：显示字段信息，支持拖拽排序与删除
+ * 使用 React.memo 避免画布中其他卡片因父组件重渲染而无效重绘，拖拽时只更新受影响的项
  */
 
+import { memo } from "react";
 import { Button, Tag } from "@arco-design/web-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -17,7 +19,7 @@ interface SortableFieldCardProps {
   onDelete: (id: string) => void;
 }
 
-export default function SortableFieldCard({ field, isSelected, onSelect, onDelete }: SortableFieldCardProps) {
+function SortableFieldCardInner({ field, isSelected, onSelect, onDelete }: SortableFieldCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field._id as UniqueIdentifier,
     data: { source: "canvas" },
@@ -70,4 +72,6 @@ export default function SortableFieldCard({ field, isSelected, onSelect, onDelet
     </div>
   );
 }
+
+export default memo(SortableFieldCardInner);
 

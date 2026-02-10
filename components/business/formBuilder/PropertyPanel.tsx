@@ -1,42 +1,38 @@
 "use client";
 
-/** 
+/**
  * 属性面板：显示字段属性配置表单
+ * 按需订阅 store（仅 selectedField + updateField），改表单标题、Schema 等不会触发重渲染
  */
 
 import { useEffect, useRef } from "react";
 import { Card, Form, Input, InputNumber, Switch } from "@arco-design/web-react";
-import type { FormField } from "@/types/formBuilder";
+import { useFormBuilderStore } from "@/store/useFormBuilderStore";
 
-interface PropertyPanelProps {
-  field: FormField | undefined;
-  onChange: (patch: {
-    label?: string;
-    key?: string;
-    required?: boolean;
-    placeholder?: string;
-    props?: Record<string, any>;
-  }) => void;
-}
-
-export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
+export default function PropertyPanel() {
   const [form] = Form.useForm();
-  // syncingRef 用于避免 setFieldsValue 触发 onValuesChange 导致循环
+  // 是否正在从全局store同步数据
   const syncingRef = useRef(false);
 
-  // 当选中字段变化时，把字段值同步到表单；未选中则重置
+  const selectedField = useFormBuilderStore((state) => {
+    const id = state.selectedFieldId;
+    if (!id) return undefined;
+    return state.schema.fields.find((f) => f._id === id);
+  });
+  const updateField = useFormBuilderStore((state) => state.updateField);
+
   useEffect(() => {
-    if (field) {
+    if (selectedField) {
       syncingRef.current = true;
       form.setFieldsValue({
-        label: field.label,
-        key: field.key,
-        required: field.required,
-        placeholder: field.placeholder,
-        maxLength: field.props?.maxLength,
-        limit: field.props?.limit,
-        accept: field.props?.accept,
-        format: field.props?.format,
+        label: selectedField.label,
+        key: selectedField.key,
+        required: selectedField.required,
+        placeholder: selectedField.placeholder,
+        maxLength: selectedField.props?.maxLength,
+        limit: selectedField.props?.limit,
+        accept: selectedField.props?.accept,
+        format: selectedField.props?.format,
       });
       syncingRef.current = false;
     } else {
@@ -44,13 +40,12 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
       form.resetFields();
       syncingRef.current = false;
     }
-  }, [field, form]);
+  }, [selectedField, form]);
 
-  // 表单变更回调：组装 patch，交由上层状态更新
   const handleChange = (_: any, values: any) => {
     if (syncingRef.current) return;
-    if (!field) return;
-    const patch: any = {
+    if (!selectedField) return;
+    const patch: Record<string, any> = {
       label: values.label,
       key: values.key,
       required: values.required,
@@ -58,20 +53,20 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
       props: {},
     };
 
-    if (field.type === "input" || field.type === "textarea") {
+    if (selectedField.type === "input" || selectedField.type === "textarea") {
       patch.props.maxLength = values.maxLength ?? undefined;
     }
 
-    if (field.type === "uploadImage") {
+    if (selectedField.type === "uploadImage") {
       patch.props.limit = values.limit ?? 3;
       patch.props.accept = values.accept || "image/jpeg,image/jpg,image/png,image/gif,image/webp";
     }
 
-    if (field.type === "uploadTable") {
+    if (selectedField.type === "uploadTable") {
       patch.props.accept = values.accept || ".xlsx,.xls";
     }
 
-    if (field.type === "date") {
+    if (selectedField.type === "date") {
       patch.props.format = values.format || "YYYY-MM-DD";
     }
 
@@ -79,11 +74,10 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
       delete patch.props;
     }
 
-    onChange(patch);
+    updateField(selectedField._id as string, patch);
   };
 
-  // 未选中字段时的占位渲染
-  if (!field) {
+  if (!selectedField) {
     return (
       <Card size="small" title="属性配置">
         <div className="text-sm text-gray-500">选择画布中的字段以配置属性</div>
@@ -91,7 +85,6 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
     );
   }
 
-  // 已选中字段时的配置表单
   return (
     <Card size="small" title="属性配置">
       <Form form={form} layout="vertical" onValuesChange={handleChange}>
@@ -108,13 +101,13 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
           <Switch />
         </Form.Item>
 
-        {(field.type === "input" || field.type === "textarea") && (
+        {(selectedField.type === "input" || selectedField.type === "textarea") && (
           <Form.Item label="最大长度" field="maxLength">
             <InputNumber min={1} max={500} placeholder="不填则不限制" style={{ width: "100%" }} />
           </Form.Item>
         )}
 
-        {field.type === "uploadImage" && (
+        {selectedField.type === "uploadImage" && (
           <>
             <Form.Item label="上传数量限制" field="limit">
               <InputNumber min={1} max={9} style={{ width: "100%" }} />
@@ -125,13 +118,13 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
           </>
         )}
 
-        {field.type === "uploadTable" && (
+        {selectedField.type === "uploadTable" && (
           <Form.Item label="文件类型" field="accept">
             <Input placeholder="默认为 .xlsx,.xls" />
           </Form.Item>
         )}
 
-        {field.type === "date" && (
+        {selectedField.type === "date" && (
           <Form.Item label="格式" field="format">
             <Input placeholder="YYYY-MM-DD" />
           </Form.Item>
@@ -140,4 +133,3 @@ export default function PropertyPanel({ field, onChange }: PropertyPanelProps) {
     </Card>
   );
 }
-
