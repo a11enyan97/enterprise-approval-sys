@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Build output
+.next
+out
+build
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.md
+!README.md
+
+# Env (use docker-compose env or mount)
+.env
+.env.*
+!.env.example
+
+# Debug & logs
+*.log
+npm-debug.log*
+.DS_Store
+
+# Test & coverage
+coverage
+*.test.*
+*.spec.*
+
+# Prisma generate will run in build, avoid copying stale generated
+# (we do copy prisma schema and run generate in Dockerfile)
+generated
+
+# Misc
+*.tsbuildinfo
+.vercel

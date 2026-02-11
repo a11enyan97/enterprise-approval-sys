@@ -1,0 +1,10 @@
+// Prisma 多文件 schema 入口：generator + datasource
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

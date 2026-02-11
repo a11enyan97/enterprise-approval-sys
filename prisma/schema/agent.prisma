@@ -1,0 +1,51 @@
+// Agent 会话、记忆与工具调用
+
+/// Agent 会话表
+model Session {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  agentType String   @map("agent_type") // Agent 类型：如 "analysis"（分析）、"executor"（执行器）
+  status    String   // 如 "pending"、"running"、"completed"、"failed"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memories    Memory[]
+  toolCallLogs ToolCallLog[]
+
+  @@map("agent_sessions")
+}
+
+/// 记忆表（短期+长期记忆）
+/// 短期：sessionId 必填，关联对话 Session。
+/// 长期：userId 必填，直接关联用户，不依赖 Session。
+model Memory {
+  id        String   @id @default(cuid())
+  type      String   // "short"（短期/会话内）、"long"（长期/跨会话）
+  content   Json     // LLM 回复、工具调用结果或用户指令
+  metadata  Json?    // 如工具调用 ID、LLM 模型版本
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sessionId String?  @map("session_id") // 短期必填
+  userId    Int?     @map("user_id")     // 长期必填
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("agent_memories")
+}
+
+/// Agent 工具调用日志表
+model ToolCallLog {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  toolName  String   @map("tool_name") // 如 "pg_query"、"http_request"
+  input     Json     // 工具输入参数
+  output    Json?    // 工具输出结果
+  status    String   // 如 "success"、"failed"
+  error     String?  // 错误信息
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("agent_tool_call_logs")
+}

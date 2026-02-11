@@ -47,6 +47,72 @@ npm run build
 npm start   # 使用 .env.local 中的配置
 ```
 
+## Docker（一份配置：本地开发 + 线上部署）
+
+同一份 `docker-compose.yml` 支持两种用法：
+
+- **本地开发**：只启动 PostgreSQL 容器，本机跑 `npm run dev`，用 `.env` 连 `127.0.0.1:5432`。
+- **全栈/部署**：`docker compose up -d` 启动 PostgreSQL + Next 应用，访问 http://localhost:3000。
+
+### 前置条件
+- 已安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Windows/Mac）
+
+### 1. 准备环境变量
+```bash
+cp .env.example .env
+```
+按需修改 `.env`（数据库密码、OSS 等）。本地开发与 Docker 全栈都读这份 `.env`；应用在容器内运行时，compose 会把数据库主机改为 `db`，无需改 `.env`。
+
+---
+
+### 方式一：本地开发（本机跑 Next，Docker 只跑 PostgreSQL）
+
+1. **只启动数据库**
+   ```bash
+   docker compose up -d db
+   ```
+   等待约 10 秒（健康检查通过）。PostgreSQL 映射到宿主机 **5432** 端口。
+
+2. **确认 `.env` 指向本机 PostgreSQL**
+   ```env
+   DATABASE_HOST=127.0.0.1
+   DATABASE_PORT=5432
+   DATABASE_URL="postgresql://postgres:1234@127.0.0.1:5432/approvalsys"
+   ```
+   （与 `.env.example` 一致即可。）
+
+3. **本机安装依赖并启动**
+   ```bash
+   npm install
+   npx prisma migrate deploy   # 首次或迁移有变更时执行一次
+   npm run dev
+   ```
+   访问 http://localhost:3000。
+
+---
+
+### 方式二：全栈运行 / 部署（应用也跑在 Docker 里）
+
+1. **构建并启动所有服务**
+   ```bash
+   docker compose up -d --build
+   ```
+   首次会构建 Next 镜像并拉取 PostgreSQL，约 1～2 分钟。应用启动时会自动执行 `prisma migrate deploy`。
+
+2. **访问**  
+   浏览器打开 http://localhost:3000。数据库在容器内通过服务名 `db:5432` 连接，宿主机仍可通过 **5432** 端口连 PostgreSQL（如用 GUI 工具）。
+
+---
+
+### 常用命令
+```bash
+docker compose up -d db        # 仅启动 PostgreSQL（本地开发）
+docker compose up -d --build   # 启动 PostgreSQL + 应用（全栈/部署）
+docker compose down            # 停止并删除容器（数据卷 postgres_data 保留）
+docker compose logs -f app     # 查看应用日志
+docker compose logs -f db      # 查看数据库日志
+```
+
 ## 关键路径
 - 前端入口：`app/approval`（列表、详情/编辑）
 - 组件：`components/business/approval/*`

@@ -1,3 +1,4 @@
+"use client";
 /**
  * 审批列表路由级 loading UI
  * Next.js 在进入 /approval 时会先渲染此组件，再流式替换为页面内容，提升 FCP 与可感知性能

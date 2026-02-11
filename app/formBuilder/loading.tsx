@@ -1,3 +1,4 @@
+"use client";
 /**
  * 表单设计器路由级 loading UI
  * 进入 /formBuilder 时先展示骨架，再流式替换为设计器，提升 FCP

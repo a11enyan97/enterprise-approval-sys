@@ -185,7 +185,7 @@ export default function ApprovalDetailClient({
   };
 
   // 自定义上传函数：不立即上传，只保存文件到本地，等待用户点击保存时统一上传
-  const customRequest = async (option: {onSuccess: {name: string, originFile: File}, file: File}) => {
+  const customRequest = async (option: any) => {
     const { onSuccess, file } = option;
     
       // 图片格式验证

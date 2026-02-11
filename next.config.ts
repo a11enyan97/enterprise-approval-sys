@@ -1,13 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
   },
   // 自定义 webpack 配置（强制使用 webpack）
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     // 可以在这里添加自定义 webpack 配置
     return config;
   },

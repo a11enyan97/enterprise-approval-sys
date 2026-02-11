@@ -1,0 +1,46 @@
+// 三、动态表单设计器
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// 表单模板表（存放设计器生成的配置）
+model FormTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique @map("form_key")
+  name        String
+  description String?
+  schema      Json
+  isPublished Boolean  @default(false) @map("is_published")
+  createdBy   Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  creator     User?            @relation("TemplateCreator", fields: [createdBy], references: [id])
+  submissions FormSubmission[]
+
+  @@map("form_templates")
+}
+
+/// 表单填写记录表（存放用户实际填写的业务数据）
+model FormSubmission {
+  id             String           @id @default(cuid())
+  templateId     String           @map("template_id")
+  schemaSnapshot Json
+  data           Json
+  submittedBy    Int              @map("submitted_by")
+  status         SubmissionStatus @default(PENDING)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  template FormTemplate @relation(fields: [templateId], references: [id])
+  submitter User         @relation("FormSubmissionSubmitter", fields: [submittedBy], references: [id])
+
+  approvalRequests ApprovalRequest[]
+
+  @@index([templateId])
+  @@index([submittedBy])
+  @@map("form_submissions")
+}
