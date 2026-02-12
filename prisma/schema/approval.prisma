@@ -10,6 +10,7 @@ enum ApprovalStatus {
 enum AttachmentType {
   image
   table
+  file
 }
 
 /// 审批申请表（核心表）

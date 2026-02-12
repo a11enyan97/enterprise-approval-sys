@@ -1,5 +1,6 @@
 "use client";
 
+import type { UploadItem } from "@arco-design/web-react/es/Upload";
 import { compressImage } from "@/utils/imageCompressor";
 import { validateExcelFile } from "@/utils/excelValidator";
 import { uploadToOSS } from "@/utils/fileUploadUtil";
@@ -7,11 +8,14 @@ import { deleteOSSFiles } from "@/actions/oss.action";
 import type { AttachmentInput } from "@/types/approval";
 
 export async function uploadAllAttachments(
-  fileList: any[],
-  attachmentType: "image" | "table"
+  fileList: UploadItem[],
+  attachmentType: "image" | "table" | "file"
 ): Promise<Array<AttachmentInput>> {
   // 1. 仅处理需要上传的文件（没有 url 且有 originFile）
-  const filesToUpload = fileList.filter((file) => !file.url && file.originFile);
+  const filesToUpload = fileList.filter(
+    (file): file is UploadItem & { originFile: File } =>
+      !file.url && !!file.originFile
+  );
 
   // 2. 表格文件先做校验
   if (attachmentType === "table") {

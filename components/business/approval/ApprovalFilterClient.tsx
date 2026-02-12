@@ -1,11 +1,17 @@
 "use client";
 
+/**
+ * 审批列表筛选区域 — UI 层
+ *
+ * 逻辑层已提取到 useApprovalFilter hook，
+ * 此组件只负责表单控件布局与渲染。
+ */
+
 import { Form, Input, Select, TreeSelect, DatePicker, Button, Grid } from "@arco-design/web-react";
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import CollapsibleFilter from "@/components/common/CollapsibleFilter";
 import type { CascaderOption } from "@/types/departments";
 import { APPROVAL_STATUS_OPTIONS } from "@/constants/approvalConfig";
+import { useApprovalFilter } from "@/hooks/approval";
 
 const FormItem = Form.Item;
 const { Row, Col } = Grid;
@@ -18,107 +24,7 @@ interface ApprovalFilterClientProps {
 export default function ApprovalFilterClient({
   departmentOptions,
 }: ApprovalFilterClientProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [form] = Form.useForm();
-
-  // 从 URL 获取筛选参数作为初始值
-  const createTimeStart = searchParams.get("createTimeStart");
-  const createTimeEnd = searchParams.get("createTimeEnd");
-  const approvalTimeStart = searchParams.get("approvalTimeStart");
-  const approvalTimeEnd = searchParams.get("approvalTimeEnd");
-
-  const initialValues = {
-    approvalStatus: searchParams.get("status") || undefined,
-    applicationDepartment: searchParams.get("deptId") || undefined,
-    approvalProject: searchParams.get("projectName") || undefined,
-    createTimeRange: createTimeStart && createTimeEnd
-      ? [new Date(createTimeStart), new Date(createTimeEnd)]
-      : undefined,
-    approvalTimeRange: approvalTimeStart && approvalTimeEnd
-      ? [new Date(approvalTimeStart), new Date(approvalTimeEnd)]
-      : undefined,
-  };
-
-  // 查询处理 - 使用 URL 搜索参数
-  const handleQuery = useCallback(() => {
-    form.validate().then((values) => {
-      const params = new URLSearchParams();
-      
-      // 保留分页参数
-      const currentPage = searchParams.get("page") || "1";
-      const currentPageSize = searchParams.get("pageSize") || "10";
-      params.set("page", currentPage);
-      params.set("pageSize", currentPageSize);
-      
-      // 添加筛选参数
-      if (values.approvalStatus) {
-        params.set("status", values.approvalStatus);
-      }
-      
-      // 部门ID：只传递选中的部门ID，不再传递三级部门ID
-      if (values.applicationDepartment) {
-        const deptId = typeof values.applicationDepartment === 'string' 
-          ? parseInt(values.applicationDepartment) 
-          : values.applicationDepartment;
-        if (!isNaN(deptId)) {
-          params.set("deptId", String(deptId));
-        }
-      }
-      
-      // 项目名称
-      if (values.approvalProject) {
-        params.set("projectName", values.approvalProject);
-      }
-      
-      // 创建时间范围（Arco Design RangePicker 返回的是 Date 对象数组）
-      if (values.createTimeRange && Array.isArray(values.createTimeRange) && values.createTimeRange.length === 2) {
-        const [start, end] = values.createTimeRange;
-        if (start) {
-          // 如果是 Date 对象，直接转换；如果是字符串，先转换为 Date
-          const startDate = start instanceof Date ? start : new Date(start);
-          params.set("createTimeStart", startDate.toISOString());
-        }
-        if (end) {
-          const endDate = end instanceof Date ? end : new Date(end);
-          params.set("createTimeEnd", endDate.toISOString());
-        }
-      }
-      
-      // 审批时间范围（Arco Design RangePicker 返回的是 Date 对象数组）
-      if (values.approvalTimeRange && Array.isArray(values.approvalTimeRange) && values.approvalTimeRange.length === 2) {
-        const [start, end] = values.approvalTimeRange;
-        if (start) {
-          const startDate = start instanceof Date ? start : new Date(start);
-          params.set("approvalTimeStart", startDate.toISOString());
-        }
-        if (end) {
-          const endDate = end instanceof Date ? end : new Date(end);
-          params.set("approvalTimeEnd", endDate.toISOString());
-        }
-      }
-      
-      // 重置到第一页
-      params.set("page", "1");
-      
-      router.push(`/approval?${params.toString()}`);
-    }).catch((error) => {
-      console.error("表单验证失败:", error);
-    });
-  }, [form, router, searchParams]);
-
-  // 清空已选
-  const handleClear = useCallback(() => {
-    form.resetFields();
-    // 只保留分页参数
-    const params = new URLSearchParams();
-    const currentPage = searchParams.get("page") || "1";
-    const currentPageSize = searchParams.get("pageSize") || "10";
-    params.set("page", currentPage);
-    params.set("pageSize", currentPageSize);
-    router.push(`/approval?${params.toString()}`);
-  }, [form, router, searchParams]);
-
+  const { form, initialValues, handleQuery, handleClear } = useApprovalFilter();
 
   return (
     <div className="bg-white rounded-md p-4 mb-4">
@@ -127,7 +33,7 @@ export default function ApprovalFilterClient({
           form={form}
           layout="vertical"
           style={{ marginTop: "16px" }}
-          initialValues={{...initialValues}}
+          initialValues={{ ...initialValues }}
         >
           <Row gutter={16}>
             <Col span={6}>
@@ -197,4 +103,3 @@ export default function ApprovalFilterClient({
     </div>
   );
 }
-

@@ -1,32 +1,29 @@
-export type FormFieldType =
-  | "input"
-  | "textarea"
-  | "date"
-  | "treeSelect"
-  | "uploadImage"
-  | "uploadTable";
+/**
+ * 表单类型定义 — 统一从 Zod Schema 推导
+ *
+ * 改造说明：
+ * - 旧版：手写 interface，无运行时校验
+ * - 新版：Zod Schema 定义 → z.infer 推导类型 → 从此文件统一 re-export
+ *
+ * 外部代码依然从 "@/types/formBuilder" 导入，无需修改导入路径。
+ * 如需 Zod Schema 本体（用于运行时校验 / Agent Structured Output），
+ * 请直接从 "@/lib/agent/schemas" 导入。
+ */
 
-export interface FormField {
-  _id?: string; // 前端拖拽用的唯一标识
-  key: string; // 提交给后端的字段名
-  type: FormFieldType; // 组件类型
-  label: string; // 显示标题
-  required: boolean;
-  placeholder?: string;
-  props?: Record<string, any>; // 组件特有属性
-  rules?: any[]; // 校验规则
-}
+// ── 字段类型 ──
+export type { FormFieldType, SelectOption, CascaderOption } from "@/lib/agent/schemas";
 
-export interface FormLayoutConfig {
-  labelCol?: { span: number };
-  wrapperCol?: { span: number };
-}
+// ── 校验规则 ──
+export type { FieldRule } from "@/lib/agent/schemas";
 
-export interface FormSchema {
-  key: string;
-  title: string;
-  description?: string;
-  layout?: FormLayoutConfig;
-  fields: FormField[];
-}
+// ── 条件联动 ──
+export type { ConditionRule } from "@/lib/agent/schemas";
 
+// ── 核心类型 ──
+export type { FormField, FormLayout, FormSchema } from "@/lib/agent/schemas";
+
+/**
+ * 布局配置（兼容旧代码的类型别名）
+ * @deprecated 请使用 FormLayout
+ */
+export type { FormLayoutConfig } from "@/lib/agent/schemas";

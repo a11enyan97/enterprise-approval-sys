@@ -2,7 +2,7 @@ import { useFormBuilderStore } from "@/store/useFormBuilderStore";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import type { FormField, FormFieldType } from "@/types/formBuilder";
 import { getFormBuilderState } from "@/store/useFormBuilderStore";
-import { paletteItems } from "@/components/business/formBuilder/PaletteItem";
+import { FIELD_TYPE_META } from "@/lib/agent/schemas";
 import { useState } from "react";
 import { useSensors, useSensor, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -45,14 +45,14 @@ export default function useFormBuilderDnd() {
             // Palette 的渲染影子容器
             const type = active.data?.current?.fieldType as FormFieldType | undefined;
             if (type) {
-                const template = paletteItems.find((item) => item.type === type);
+                const meta = FIELD_TYPE_META[type];
                 setActiveField({
                     _id: "preview",
                     key: `${type}-preview`,
                     type,
-                    label: template?.title || "新字段",
+                    label: meta?.label || "新字段",
                     required: false,
-                    placeholder: template?.desc || "",
+                    placeholder: meta?.description || "",
                     props: {},
                     rules: [],
                 });

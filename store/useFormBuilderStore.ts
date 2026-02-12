@@ -5,65 +5,37 @@ import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type { FormFieldType, FormField, FormSchema } from "@/types/formBuilder";
+import { FIELD_TYPE_META } from "@/lib/agent/schemas";
 
-const fieldTemplates: Record<FormFieldType, Omit<FormField, "_id" | "key">> = {
-  input: {
-    type: "input",
-    label: "单行输入",
+// ================================================================
+// 字段模板：每种字段类型的默认配置
+// 从 FIELD_TYPE_META 的 defaultProps 自动获取，保持单一数据源
+// ================================================================
+
+function buildFieldTemplate(type: FormFieldType): Omit<FormField, "_id" | "key"> {
+  const meta = FIELD_TYPE_META[type];
+  return {
+    type,
+    label: meta.label,
     required: false,
-    placeholder: "请输入内容",
-    props: { maxLength: 100 },
+    placeholder: ["switch", "rate", "checkbox", "radio"].includes(type) ? undefined : "请输入",
+    props: meta.defaultProps ? { ...meta.defaultProps } : undefined,
     rules: [],
-  },
-  textarea: {
-    type: "textarea",
-    label: "多行文本",
-    required: false,
-    placeholder: "请输入描述",
-    props: { maxLength: 300, showWordLimit: true, autoSize: { minRows: 3, maxRows: 6 } },
-    rules: [],
-  },
-  date: {
-    type: "date",
-    label: "日期",
-    required: false,
-    placeholder: "请选择日期",
-    props: { format: "YYYY-MM-DD", style: { width: "100%" } },
-    rules: [],
-  },
-  treeSelect: {
-    type: "treeSelect",
-    label: "部门选择",
-    required: false,
-    placeholder: "请选择",
-    props: { allowClear: true, style: { width: "100%" } },
-    rules: [],
-  },
-  uploadImage: {
-    type: "uploadImage",
-    label: "图片上传",
-    required: false,
-    placeholder: "",
-    props: {
-      multiple: true,
-      imagePreview: true,
-      listType: "picture-card",
-      limit: 3,
-      accept: "image/jpeg,image/jpg,image/png,image/gif,image/webp",
-    },
-    rules: [],
-  },
-  uploadTable: {
-    type: "uploadTable",
-    label: "表格上传",
-    required: false,
-    placeholder: "",
-    props: { accept: ".xlsx,.xls" },
-    rules: [],
-  },
-};
+    // 带选项的字段类型，提供一组默认选项
+    ...(meta.hasOptions
+      ? {
+          options: [
+            { label: "选项一", value: "option1" },
+            { label: "选项二", value: "option2" },
+            { label: "选项三", value: "option3" },
+          ],
+        }
+      : {}),
+  };
+}
 
 const defaultSchema: FormSchema = {
+  version: "1.0",
   key: "default_schema",
   title: "未命名表单",
   description: "拖拽左侧组件到画布，右侧配置字段属性",
@@ -72,12 +44,12 @@ const defaultSchema: FormSchema = {
 
 /**
  * 创建字段
- * 
+ *
  * @param type 字段类型
  * @returns 字段
  */
 function createField(type: FormFieldType): FormField {
-  const template = fieldTemplates[type];
+  const template = buildFieldTemplate(type);
   return {
     _id: nanoid(),
     key: `${type}_${nanoid(6)}`,
@@ -98,16 +70,15 @@ export interface FormBuilderState {
 }
 
 const formBuilderStore = createStore<FormBuilderState>()(
-  immer((set, get) => ({
+  immer((set) => ({
     schema: defaultSchema,
     selectedFieldId: null,
 
     /**
-     * 新增的字段到指定位置
-     * 
+     * 新增字段到指定位置
+     *
      * @param type 新增字段的类型
      * @param insertBeforeId 插入位置的字段ID
-     * @returns 
      */
     addField: (type, insertBeforeId) =>
       set((state) => {
@@ -126,10 +97,9 @@ const formBuilderStore = createStore<FormBuilderState>()(
 
     /**
      * 对画布中的字段进行排序
-     * 
+     *
      * @param activeId 当前拖拽的字段ID
      * @param overId 目标位置的字段ID
-     * @returns 
      */
     moveField: (activeId, overId) =>
       set((state) => {
@@ -166,11 +136,27 @@ const formBuilderStore = createStore<FormBuilderState>()(
         if (payload.type !== undefined) {
           target.type = payload.type;
         }
+        if (payload.description !== undefined) {
+          target.description = payload.description;
+        }
+        if (payload.hidden !== undefined) {
+          target.hidden = payload.hidden;
+        }
+        if (payload.disabled !== undefined) {
+          target.disabled = payload.disabled;
+        }
+        if (payload.defaultValue !== undefined) {
+          target.defaultValue = payload.defaultValue;
+        }
         if (payload.required !== undefined) {
           target.required = payload.required;
+          // 自动维护 required 规则
           target.rules = payload.required
-            ? [{ required: true, message: `${payload.label ?? target.label}为必填项` }]
+            ? [{ type: "required", message: `${payload.label ?? target.label}为必填项` }]
             : [];
+        }
+        if (payload.options !== undefined) {
+          target.options = payload.options;
         }
         if (payload.props !== undefined) {
           const nextProps = { ...(target.props || {}), ...payload.props };
@@ -207,13 +193,12 @@ const formBuilderStore = createStore<FormBuilderState>()(
         schema: { ...defaultSchema, fields: [] },
         selectedFieldId: null,
       })),
-  }))
+  })),
 );
 
-// 对useStore进行封装，方便在组件中使用
+// 对 useStore 进行封装，方便在组件中使用
 export const useFormBuilderStore = <T,>(selector: (state: FormBuilderState) => T) =>
   useStore(formBuilderStore, selector);
 
-/** 在非 React 回调中读取最新 state（如 DnD 回调、保存时取 schema），避免为读一次数而订阅整棵 schema */
+/** 在非 React 回调中读取最新 state（如 DnD 回调、保存时取 schema），避免为读一次数据而订阅整棵 schema */
 export const getFormBuilderState = () => formBuilderStore.getState();
-

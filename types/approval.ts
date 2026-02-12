@@ -111,7 +111,7 @@ export interface GetApprovalListParams {
 export interface AttachmentInput {
   filePath: string;
   fileName: string;
-  attachmentType: 'image' | 'table';
+  attachmentType: 'image' | 'table' | 'file';
   fileSize?: number | string; // 文件大小（字节），可以是数字或字符串（BigInt）
   mimeType?: string | null; // MIME 类型
 }
