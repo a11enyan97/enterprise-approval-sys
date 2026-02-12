@@ -1,9 +1,10 @@
 // lib/agent/memory/index.ts
-// Agent 记忆模块统一导出
+// 记忆系统统一导出
+// 短期记忆：会话上下文
+// 长期记忆：关键信息持久化
 
 export {
   MEMORY_TYPE_SHORT,
-  PrismaChatMessageHistory,
   getSessionHistory,
   type PrismaChatMessageHistoryConfig,
 } from "./short-term";

@@ -36,7 +36,7 @@ export async function getLongTermMemory(
   const memories = await prisma.memory.findMany({
     where: {
       type: MEMORY_TYPE_LONG,
-      session: { userId },
+      OR: [{ userId }, { session: { userId } }],
     },
     orderBy: { createdAt: "desc" },
     take: limit,

@@ -49,6 +49,7 @@ export interface MenuItem {
 const MENU_CONFIG: MenuItem[] = [
   { key: "approval", label: "审批", path: "/approval" },
   { key: "formBuilder", label: "表单配置", path: "/formBuilder" },
+  { key: "agent", label: "Agent", path: "/agent" },
 ];
 
 /**
@@ -56,7 +57,7 @@ const MENU_CONFIG: MenuItem[] = [
  */
 export function getMenusByRole(role: "applicant" | "approver"): MenuItem[] {
   // 1. 基础菜单（所有人可见）
-  const allowedKeys: string[] = ["approval"];
+  const allowedKeys: string[] = ["approval", "agent"];
 
   // 2. 审批人特权菜单
   if (role === "approver") {

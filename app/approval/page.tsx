@@ -5,7 +5,6 @@ import ApprovalFilterClient from "@/components/business/approval/ApprovalFilterC
 import ApprovalTableClient from "@/components/business/approval/ApprovalTableClient";
 import type { GetApprovalListParams } from "@/types/approval";
 
-// 审批列表依赖用户与实时数据，且 Arco 等库在预渲染时依赖 createContext，故使用动态渲染
 export const dynamic = "force-dynamic";
 
 interface ApprovalPageProps {
