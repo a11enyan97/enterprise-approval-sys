@@ -1,7 +1,7 @@
 "use client";
 
 import { Form, Button, Grid } from "@arco-design/web-react";
-import type { FormInstance } from "@arco-design/web-react";
+import type { FormInstance, UploadProps } from "@arco-design/web-react";
 import type { CascaderOption } from "@/types/departments";
 import type { FormSchema } from "@/types/formBuilder";
 import { renderFormField } from "./FormFieldRenderer";
@@ -14,7 +14,11 @@ interface ApprovalFormProps {
   isReadOnly: boolean;
   departmentOptions: CascaderOption[];
   deptLoading?: boolean;
-  customRequest: (option: any) => Promise<void>;
+  /** 人员树数据（供 userPicker 使用） */
+  userOptions?: CascaderOption[];
+  /** 人员树加载状态 */
+  userLoading?: boolean;
+  customRequest: NonNullable<UploadProps['customRequest']>;
   saving?: boolean;
   onSave?: () => void;
   formSchema: FormSchema | null;
@@ -25,6 +29,8 @@ export default function ApprovalForm({
   isReadOnly,
   departmentOptions,
   deptLoading = false,
+  userOptions = [],
+  userLoading = false,
   customRequest,
   saving = false,
   onSave,
@@ -47,6 +53,8 @@ export default function ApprovalForm({
           isReadOnly,
           departmentOptions,
           deptLoading,
+          userOptions,
+          userLoading,
           customRequest,
         })
       )}

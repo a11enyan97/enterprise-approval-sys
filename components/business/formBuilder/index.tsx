@@ -5,14 +5,15 @@
  * 画布/属性面板/Schema/表单信息各自订阅自己的 slice，避免整棵 schema 导致全量重渲染
  */
 
-import { Button, Card, Form, Input, Space, Tag, Typography, Modal } from "@arco-design/web-react";
+import { Button, Card, Collapse, Form, Input, Space, Tag, Typography, Modal } from "@arco-design/web-react";
 import { DndContext, DragOverlay, pointerWithin } from "@dnd-kit/core";
 import { useFormBuilderStore, getFormBuilderState } from "@/store/useFormBuilderStore";
 import PropertyPanel from "@/components/business/formBuilder/PropertyPanel";
 import Canvas from "@/components/business/formBuilder/Canvas";
 import FormMetaSection from "@/components/business/formBuilder/FormMetaSection";
 import SchemaPreview from "@/components/business/formBuilder/SchemaPreview";
-import PaletteItem, { paletteItems } from "@/components/business/formBuilder/PaletteItem";
+import PaletteItem from "@/components/business/formBuilder/PaletteItem";
+import { FIELD_TYPE_META, FIELD_TYPE_GROUPS } from "@/lib/agent/schemas";
 import useFormBuilderDnd from "@/hooks/useFormBuilderDnd";
 import useFormBuilderSave from "@/hooks/useFormBuilderSave";
 
@@ -77,13 +78,31 @@ export default function FormBuilderClient() {
         onDragCancel={handleDragCancel}
       >
         <div className="grid gap-4 md:grid-cols-12">
-          <div className="md:col-span-3 space-y-3">
-            <Card size="small" title="基础组件">
-              <div className="space-y-3">
-                {paletteItems.map((item) => (
-                  <PaletteItem key={item.type} {...item} />
+          <div className="md:col-span-3">
+            <Card size="small" title="组件面板" bodyStyle={{ padding: 0 }}>
+              <Collapse bordered={false} lazyload={false}>
+                {Object.entries(FIELD_TYPE_GROUPS).map(([groupKey, group]) => (
+                  <Collapse.Item
+                    key={groupKey}
+                    name={groupKey}
+                    header={group.label}
+                  >
+                    <div className="space-y-3">
+                      {group.types.map((type) => {
+                        const meta = FIELD_TYPE_META[type];
+                        return (
+                          <PaletteItem
+                            key={type}
+                            type={type}
+                            label={meta.label}
+                            description={meta.description}
+                          />
+                        );
+                      })}
+                    </div>
+                  </Collapse.Item>
                 ))}
-              </div>
+              </Collapse>
             </Card>
           </div>
 
